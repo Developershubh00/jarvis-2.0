@@ -1,0 +1,66 @@
+# Jarvis settings: every option with its default value.
+#
+# Don't edit this file. Copy only the settings you want to change into config.local.yaml
+# (same layout). That file overrides this one, git ignores it, and updates never overwrite it.
+# Restart Jarvis after changing settings. ./run.sh --doctor reports typos.
+
+user_name: "sir"              # what Jarvis calls you
+assistant_name: "Jarvis"
+
+# The brain (phase 2+)
+llm:
+  # claude-sonnet-5-5 balances speed, smarts and price.
+  # Cheaper and faster: claude-haiku-4-5-20251001. Smartest and priciest: claude-opus-5-5
+  model: claude-sonnet-5-5
+  max_tokens: 16000           # longest single reply (code files can be long)
+  max_steps: 30               # most actions Jarvis may take for one request
+  history_turns: 8            # past exchanges remembered during a session
+  web_search: true            # lets Jarvis search the web ($10 per 1,000 searches)
+  web_search_max_uses: 5      # searches allowed per request
+  prompt_caching: true        # reuses repeated context to cut cost and latency
+
+# Global hotkeys (phase 7+). Format: modifiers + key, for example "ctrl+alt+c", "cmd+shift+space" or "f5".
+# Modifiers: ctrl, alt (option), cmd, shift. Avoid a bare letter like "c": it would fire while you type.
+hotkeys:
+  talk: "ctrl+alt+c"          # press, speak, done (press again to finish early)
+  tutor: "ctrl+alt+t"         # the same, but Jarvis also sees your screen and can point at things
+  type: "ctrl+alt+j"          # type a request instead of speaking
+  push_to_talk: "right_option"  # hold this key to talk, release to send. Or right_command, right_control, right_shift, or "" for off
+
+# Listening and speaking (phases 5-6)
+voice:
+  stt_model: small.en         # speech model: base.en (fastest), small.en (balanced), medium.en (most accurate, slow)
+  language: en                # spoken language; models ending in .en are English-only
+  beam_size: 5                # higher = slightly more accurate, slower
+  vocabulary: "Jarvis, Python, JavaScript, TypeScript, React, Node, VS Code, GitHub, terminal, Xcode, macOS, Safari, Chrome, Notion, assignment"
+  vad_threshold: 0.012        # microphone sensitivity; raise it if background noise keeps Jarvis listening
+  silence_seconds: 1.2        # pause length that means "I'm done talking"
+  start_timeout_seconds: 7    # give up if you don't start talking within this time
+  max_record_seconds: 45
+  input_device: null          # null = the system default microphone, or a device name or number
+  tts: true                   # speak replies out loud
+  tts_voice: Daniel           # any voice from `say -v '?'`, for example Samantha, Daniel, Karen or Rishi
+  tts_rate: 190               # speaking speed in words per minute
+  sounds: true                # short chimes when listening starts and stops
+  follow_up_listen: true      # when Jarvis asks you a question, listen for the answer automatically
+
+# Optional "Hey Jarvis" wake word (phase 10). Off by default.
+wake_word:
+  enabled: false
+  model: hey_jarvis
+  threshold: 0.5              # 0 to 1; higher means fewer false triggers
+
+# Safety (phase 3+)
+safety:
+  confirm_shell: risky        # always, risky or never: when to ask before running a terminal command
+  confirm_writes_outside_workspace: true   # ask before changing existing files outside the workspace
+  shell_timeout_seconds: 120
+
+paths:
+  workspace: ~/JarvisWorkspace  # where Jarvis creates projects and files by default
+
+# Floating panel and tutor pointer (phases 8-9)
+ui:
+  hud_position: top-right     # top-right, top-left, bottom-right or bottom-left
+  hud_autohide_seconds: 15
+  pointer_hide_seconds: 25

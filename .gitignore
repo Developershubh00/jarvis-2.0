@@ -1,0 +1,10 @@
+# Never commit secrets or personal settings
+.env
+config.local.yaml
+
+# Local environment and runtime data
+.venv/
+data/
+__pycache__/
+*.pyc
+.DS_Store

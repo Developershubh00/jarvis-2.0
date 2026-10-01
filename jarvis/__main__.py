@@ -1,0 +1,47 @@
+"""Command-line entry point: ./run.sh [--doctor | --version]."""
+from __future__ import annotations
+
+import argparse
+import sys
+
+from . import PHASE, __version__
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="jarvis", description="Jarvis: a voice-first AI assistant for your Mac.")
+    parser.add_argument("--doctor", action="store_true", help="check your setup and API key, and explain fixes")
+    parser.add_argument("--version", action="store_true", help="print the version and exit")
+    parser.add_argument("--config", metavar="PATH", help="use a different config.yaml")
+    parser.add_argument("--model", help="use a different Claude model for this run")
+    parser.add_argument("--debug", action="store_true", help="verbose logging in the terminal")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
+    if args.version:
+        print(f"Jarvis {__version__} (phase {PHASE} of 10)")
+        return 0
+
+    from .config import ensure_dirs, load_config, setup_logging
+
+    overrides = {"llm": {"model": args.model}} if args.model else None
+    cfg = load_config(args.config, overrides=overrides)
+    ensure_dirs(cfg)
+    setup_logging(cfg, debug=args.debug, console=args.debug)
+
+    if args.doctor:
+        from .doctor import run_doctor
+
+        return run_doctor(cfg)
+
+    print(f"Jarvis {__version__} is installed (phase {PHASE} of 10).")
+    print("Run ./run.sh --doctor to check your setup. Chatting with Jarvis arrives in phase 2.")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        sys.exit(130)

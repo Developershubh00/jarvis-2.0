@@ -1,0 +1,15 @@
+# Jarvis core dependencies.
+# Needs Python 3.11 or 3.12 on macOS 12+ (Intel or Apple Silicon).
+# Python 3.13 won't work on Intel Macs yet: onnxruntime (used by faster-whisper) has no Intel wheel for it.
+anthropic>=1.11,<2
+PyYAML>=6.0
+python-dotenv>=1.0
+numpy>=1.26
+sounddevice>=0.4.6
+faster-whisper>=1.1
+Pillow>=10.0
+pypdf>=4.0
+pyobjc-core>=10.0; sys_platform == "darwin"
+pyobjc-framework-Cocoa>=10.0; sys_platform == "darwin"
+pyobjc-framework-Quartz>=10.0; sys_platform == "darwin"
+pyobjc-framework-ApplicationServices>=10.0; sys_platform == "darwin"
