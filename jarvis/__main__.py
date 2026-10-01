@@ -1,4 +1,4 @@
-"""Command-line entry point: ./run.sh [--doctor | --version]."""
+"""Command-line entry point: ./run.sh [--cli | --say TEXT | --doctor | --version]."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +9,8 @@ from . import PHASE, __version__
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis", description="Jarvis: a voice-first AI assistant for your Mac.")
+    parser.add_argument("--cli", action="store_true", help="chat with Jarvis in the terminal")
+    parser.add_argument("--say", metavar="TEXT", help="send one message, print the reply and exit")
     parser.add_argument("--doctor", action="store_true", help="check your setup and API key, and explain fixes")
     parser.add_argument("--version", action="store_true", help="print the version and exit")
     parser.add_argument("--config", metavar="PATH", help="use a different config.yaml")
@@ -34,9 +36,18 @@ def main(argv: list[str] | None = None) -> int:
         from .doctor import run_doctor
 
         return run_doctor(cfg)
+    if args.say:
+        from .cli import run_once
 
-    print(f"Jarvis {__version__} is installed (phase {PHASE} of 10).")
-    print("Run ./run.sh --doctor to check your setup. Chatting with Jarvis arrives in phase 2.")
+        return run_once(cfg, args.say)
+    if args.cli:
+        from .cli import run_cli
+
+        return run_cli(cfg)
+
+    print(f"Jarvis {__version__} (phase {PHASE} of 10).")
+    print("  Chat in the terminal:  ./run.sh --cli")
+    print("  Check your setup:      ./run.sh --doctor")
     return 0
 
 

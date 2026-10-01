@@ -174,7 +174,7 @@ class ToolRegistry:
 
 
 # Tool modules, in the order their tools are offered to Claude. Each later phase adds modules here.
-TOOL_MODULES = ("memory_tools",)
+TOOL_MODULES = ("file_tools", "shell_tools", "memory_tools")
 
 
 def build_registry(cfg: Any = None) -> ToolRegistry:

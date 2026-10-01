@@ -402,7 +402,7 @@ class RegistryTests(Base):
 
     def test_phase_two_tools(self):
         reg = build_registry(self.cfg)
-        self.assertEqual(reg.names(), ["memory"])
+        self.assertIn("memory", reg.names())
         for schema in reg.schemas():
             self.assertEqual(set(schema), {"name", "description", "input_schema"})
             self.assertEqual(schema["input_schema"]["type"], "object")

@@ -8,3 +8,6 @@ data/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Update kits and their backups
+patches/
