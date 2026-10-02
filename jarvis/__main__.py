@@ -1,4 +1,4 @@
-"""Command-line entry point: ./run.sh starts the menu-bar app; --cli, --listen, --say, --doctor and --version too."""
+"""Command-line entry point: ./run.sh starts the menu-bar app; also --cli, --listen, --say, --login, --doctor, --version."""
 from __future__ import annotations
 
 import argparse
@@ -14,6 +14,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--listen", action="store_true", help="test the microphone and speech recognition (no API key needed)")
     parser.add_argument("--say", metavar="TEXT", help="send one message, print the reply and exit")
     parser.add_argument("--doctor", action="store_true", help="check your setup and API key, and explain fixes")
+    parser.add_argument("--login", choices=("on", "off", "status"), help="start Jarvis when you log in (on/off)")
     parser.add_argument("--version", action="store_true", help="print the version and exit")
     parser.add_argument("--config", metavar="PATH", help="use a different config.yaml")
     parser.add_argument("--model", help="use a different Claude model for this run")
@@ -34,6 +35,17 @@ def main(argv: list[str] | None = None) -> int:
     ensure_dirs(cfg)
     setup_logging(cfg, debug=args.debug, console=args.debug)
 
+    if args.login:
+        from .login import login_status, set_login
+
+        if args.login == "status":
+            state = login_status(cfg)
+            print({True: "Start at login: on.", False: "Start at login: off. Turn it on with ./run.sh --login on.",
+                   None: "Couldn't check (this needs macOS, and permission for Terminal to control System Events)."}[state])
+            return 0
+        worked, message = set_login(cfg, args.login == "on")
+        print(message)
+        return 0 if worked else 1
     if args.doctor:
         from .doctor import run_doctor
 

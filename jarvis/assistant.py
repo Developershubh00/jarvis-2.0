@@ -84,9 +84,9 @@ class Assistant:
             try:
                 from .voice.wakeword import WakeWordListener
             except ImportError:
-                self.ui.hint("The wake word arrives in phase 10; use the hotkey for now.")
+                self.ui.hint("The wake word files are missing; reinstall Jarvis to use it. The hotkey still works.")
             else:
-                self.wakeword = WakeWordListener(self.cfg, on_wake=self.on_wake)
+                self.wakeword = WakeWordListener(self.cfg, on_wake=self.on_wake, on_error=self.ui.hint)
                 self.wakeword.start()
 
     def shutdown(self) -> None:

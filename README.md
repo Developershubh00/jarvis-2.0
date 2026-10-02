@@ -4,7 +4,7 @@ A voice-first AI assistant for your Mac. Press a hotkey, say what you need, and 
 
 Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain. GitHub stores the code and runs the automatic tests; Jarvis itself runs on your Mac.
 
-> **Status: phase 9 of 10 (tutor mode).** Press ⌃⌥T and ask about anything on your screen: Jarvis looks, explains, and an animated pointer shows you exactly where to click, step by step. Next up: the finishing touches (wake word, start at login, full permission checks).
+> **Status: version 1.0, all ten phases done.** Talk to Jarvis with a hotkey, by holding Option or by saying "Hey Jarvis"; it works across your Mac, teaches with an on-screen pointer, and can start when you log in. New features arrive as patches in the same format.
 
 ## Roadmap
 
@@ -19,7 +19,7 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **7. Menu-bar app** ✅ | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
 | **8. Floating panel** ✅ | Glass panel with an animated orb and live text | Watch it listen, think and speak |
 | **9. Tutor mode** ✅ | ⌃⌥T: Jarvis sees your screen and guides you with an animated pointer | "Explain what's on my screen" |
-| 10. Polish | "Hey Jarvis" wake word, hold-to-talk, launch at login, full permission checks | `./run.sh --doctor` all green |
+| **10. Polish** ✅ | "Hey Jarvis" wake word, hold-to-talk, launch at login, full permission checks | `./run.sh --doctor` all green |
 
 ## What you need
 
@@ -83,6 +83,31 @@ Press ⌃⌥T (or choose Tutor mode in the menu) and ask about whatever is on yo
 For homework and assignments Jarvis teaches first: it explains the idea and gives hints, and gives a full solution when you ask for one, with every step explained. The pointer disappears after `ui.pointer_hide_seconds` (25 by default) or when you press Esc. Tutor mode works in the terminal chat too: `/tutor <your question>`.
 
 The first time, macOS asks for **Screen Recording** permission for your terminal app. Turn it on in System Settings, Privacy & Security, Screen Recording, then quit and reopen the terminal (macOS only applies this permission after a restart). Without it, Jarvis only sees your desktop background.
+
+## Say "Hey Jarvis"
+
+The wake word is optional and runs entirely on your Mac. Install it once:
+
+```bash
+./setup.sh --wakeword
+```
+
+Then turn it on in `config.local.yaml` and restart Jarvis:
+
+```yaml
+wake_word:
+  enabled: true
+```
+
+Say "Hey Jarvis", wait for the chime, then ask. Jarvis stops listening for the wake word while it's working or speaking, so it never wakes itself. If it triggers by mistake, raise `wake_word.threshold` (0.6 or 0.7); if it misses you, lower it a little. Listening for the wake word uses a small, steady amount of processor time.
+
+## Start Jarvis at login
+
+```bash
+./run.sh --login on
+```
+
+At login, Terminal opens and starts Jarvis, so it keeps the permissions you already gave Terminal. Minimise that window rather than closing it. `./run.sh --login off` turns this off, and `./run.sh --login status` checks it. The first time, macOS asks whether Terminal may control System Events (that's how the login item is added): click OK.
 
 ## Chat with Jarvis in the terminal
 
@@ -176,19 +201,23 @@ Restart Jarvis after changing settings. `./run.sh --doctor` reports typos in set
 
 Jarvis uses your own API key, so you pay Anthropic per request. Prompt caching is on by default to cut the cost of repeated context, and web searches cost $10 per 1,000. Set a monthly spend limit in the Claude Console so there are no surprises. For a cheaper brain, set `llm.model` to `claude-haiku-4-5-20251001`. Type `/usage` in the chat to see how many tokens you've used.
 
-## Updating to the next phase
+## Updating Jarvis
 
-Each phase arrives as a patch kit. From inside your Jarvis folder, unzip it and run its script:
+New features and fixes arrive as patch kits. From inside your Jarvis folder, unzip the kit and run its script (the folder name inside the zip is in its instructions):
 
 ```bash
 cd ~/Projects/jarvis          # your Jarvis folder
-unzip -oq ~/Downloads/jarvis-phase-04.zip
-bash patches/phase-04/apply.sh --push
+unzip -oq ~/Downloads/jarvis-phase-10.zip
+bash patches/phase-10/apply.sh --push
 ```
 
 The script applies the changes (with `git apply`, or by copying files if you edited something, keeping your version in `patches/backups`), tidies leftovers from earlier updates such as a `jarvis 2` folder or old zip files, reinstalls packages only when the requirements changed, and runs the tests. `--push` then commits and pushes, `--commit` only commits, and with neither it just applies and tests. Your `.env`, `config.local.yaml`, `.venv` and `data/` are never touched.
 
-If your browser already unzipped the download, run the script from inside your Jarvis folder instead: `bash ~/Downloads/patches/phase-04/apply.sh --push`.
+If your browser already unzipped the download, run the script from inside your Jarvis folder instead: `bash ~/Downloads/patches/phase-10/apply.sh --push`.
+
+## Ideas for what's next
+
+Some directions Jarvis could grow in: reading full web pages (not just search results), running offline on a local model, handing big coding jobs to Claude Code, tutor mode across several displays, other spoken languages through Whisper's multilingual models, and connecting your calendar and email.
 
 ## Project layout
 
@@ -198,6 +227,7 @@ jarvis/
 ├── run.sh                 launcher (./run.sh --cli, --say, --doctor)
 ├── config.yaml            every setting, with explanations
 ├── requirements.txt       Python packages
+├── requirements-wakeword.txt   the optional wake word (./setup.sh --wakeword)
 ├── jarvis/
 │   ├── __main__.py        command-line entry point
 │   ├── brain.py           the agent loop: streams Claude's replies and runs its tools
@@ -220,8 +250,10 @@ jarvis/
 │   │   └── overlay_logic.py   the pointer's shape, label placement and glide (plain Python)
 │   ├── mac.py             macOS helpers: AppleScript, clipboard, keystrokes, permissions
 │   ├── assistant.py       the assistant engine: listening, thinking, speaking, quick phrases, cancelling
-│   ├── voice/             the microphone (recorder.py), speech recognition (stt.py) and speech (tts.py)
+│   ├── voice/             the microphone (recorder.py), speech recognition (stt.py), speech (tts.py)
+│   │                      and the optional wake word (wakeword.py)
 │   ├── config.py          loads settings: defaults, then config.yaml, then config.local.yaml
+│   ├── login.py           start at login (./run.sh --login on)
 │   ├── claude_client.py   Claude API client and plain-English error messages
 │   └── doctor.py          the ./run.sh --doctor health check
 ├── tests/                 unit tests, run by GitHub Actions on every push
@@ -250,4 +282,5 @@ GitHub Actions runs the same tests on every push; see the **Actions** tab of you
 - **"macOS blocked access" when reading a file**: allow your terminal app under System Settings, Privacy & Security, Files and Folders (or Full Disk Access).
 - **"The microphone is giving pure silence"**: allow Microphone access for your terminal app (see Mac permissions), then quit and reopen the terminal.
 - **The speech model download fails**: it needs internet the first time only; check your connection and run `./run.sh --listen` again.
+- **"Hey Jarvis" doesn't respond**: check `./run.sh --doctor` (the Extras section), make sure you ran `./setup.sh --wakeword` and set `wake_word.enabled: true`, then restart Jarvis.
 - **SSL or certificate errors with the python.org installer**: open Applications, then Python 3.12, and run "Install Certificates.command".

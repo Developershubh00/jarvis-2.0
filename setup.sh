@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # One-time setup: finds Python 3.11/3.12, creates .venv, installs dependencies.
 # Usage: ./setup.sh             (core)
-#        ./setup.sh --wakeword  (also the optional "Hey Jarvis" wake word, from phase 10)
+#        ./setup.sh --wakeword  (also the optional "Hey Jarvis" wake word)
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -69,7 +69,7 @@ if (( WAKEWORD )); then
     echo "Installing the wake word..."
     .venv/bin/python -m pip install --prefer-binary -r requirements-wakeword.txt
   else
-    echo "The wake word arrives in phase 10; skipping it for now."
+    echo "requirements-wakeword.txt is missing, so the wake word was skipped. Update Jarvis and try again."
   fi
 fi
 

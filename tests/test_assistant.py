@@ -315,7 +315,7 @@ class AssistantTests(Base):
         with mock.patch.dict(sys.modules, {"jarvis.voice.wakeword": None}):  # the module arrives in phase 10
             a.start(preload=False)
         self.addCleanup(a.shutdown)
-        self.assertIn("phase 10", self.out.getvalue())
+        self.assertIn("wake word files are missing", self.out.getvalue())
 
 
 if __name__ == "__main__":

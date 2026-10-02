@@ -1,6 +1,7 @@
 # Never commit secrets or personal settings
 .env
 config.local.yaml
+Jarvis.command
 
 # Local environment and runtime data
 .venv/

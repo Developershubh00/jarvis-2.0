@@ -233,6 +233,26 @@ def check_hotkeys(r: Report, cfg) -> None:
         r.add(WARN, str(e))
 
 
+def check_extras(r: Report, cfg) -> None:
+    from .login import command_path
+
+    r.section("Extras")
+    word = str(cfg.wake_word.model or "hey_jarvis").replace("_", " ").title()
+    if cfg.wake_word.enabled:
+        try:
+            importlib.import_module("openwakeword")
+            r.add(OK, f"Wake word: on (\"{word}\", threshold {cfg.wake_word.threshold})")
+        except Exception:
+            r.add(FAIL, "Wake word is on, but openwakeword isn't installed", "Run ./setup.sh --wakeword, then restart Jarvis.")
+    else:
+        r.add(INFO, "Wake word: off", f"To say \"{word}\" instead of pressing a key: run ./setup.sh --wakeword, "
+              "then set wake_word.enabled: true in config.local.yaml.")
+    if command_path(cfg).exists():
+        r.add(INFO, "Start at login: set up (Jarvis.command)", "Turn it off with ./run.sh --login off.")
+    else:
+        r.add(INFO, "Start at login: off", "Turn it on with ./run.sh --login on.")
+
+
 def check_api(r: Report, cfg, client=None) -> None:
     r.section("Claude API")
     if client is None:
@@ -278,6 +298,7 @@ def run_doctor(cfg, out=None, client=None, hardware: bool = True) -> int:
     check_mac_permissions(r)
     check_hotkeys(r, cfg)
     check_voice(r, cfg, hardware)
+    check_extras(r, cfg)
     check_api(r, cfg, client)
     fails, warns = r.count(FAIL), r.count(WARN)
     r.line()

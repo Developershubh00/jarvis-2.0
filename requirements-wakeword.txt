@@ -1,0 +1,2 @@
+# Optional "Hey Jarvis" wake word (install with: ./setup.sh --wakeword)
+openwakeword>=0.6.0
