@@ -6,6 +6,7 @@ import contextlib
 import os
 import sys
 import threading
+import time
 from typing import Iterator
 
 
@@ -53,6 +54,8 @@ class ConsoleUI(UIBridge):
         self._midline = False
         self._streamed = False
         self._need_prefix = True
+        self._meter = False
+        self._last_meter = 0.0
         self.pointer: tuple[float, float, str] | None = None
 
     def _paint(self, code: str, text: str) -> str:
@@ -66,14 +69,32 @@ class ConsoleUI(UIBridge):
                 self._midline = not text.endswith("\n")
 
     def _line(self, text: str) -> None:
+        self._clear_meter()
         prefix = "\n" if self._midline else ""
         self._write(f"{prefix}{text}\n")
 
+    def _clear_meter(self) -> None:
+        if self._meter:
+            self._meter = False
+            self._write("\r" + " " * 40 + "\r")
+            self._midline = False
+
+    def set_level(self, level: float) -> None:
+        """A live microphone meter on one line (terminal only)."""
+        now = time.monotonic()
+        if not self.color or (now - self._last_meter < 0.05 and level > 0):
+            return
+        self._last_meter = now
+        bars = max(0, min(20, int(round(level * 20))))
+        self._write("\r  " + self._paint("35", "▮" * bars) + self._paint("2", "▯" * (20 - bars)) + " ")
+        self._meter = True
+
     def set_state(self, state: str, title: str | None = None, subtitle: str | None = None) -> None:
         if state == "listening":
-            self._line("[listening... speak now, it stops when you pause]")
+            self._line(self._paint("1;35", "● Listening.") +
+                       self._paint("2", " Speak now; it stops when you pause. Ctrl+C cancels."))
         elif state == "transcribing":
-            self._line("[transcribing]")
+            self._line(self._paint("2", "  · transcribing…"))
         elif state == "error" and subtitle:
             self.show_error(subtitle)
         elif title and state == "idle" and subtitle:
@@ -84,7 +105,7 @@ class ConsoleUI(UIBridge):
         self._need_prefix = True
 
     def show_user_text(self, text: str) -> None:
-        self._line(f'You: "{text}"')
+        self._line(f'You said: "{text}"')
 
     def append_text(self, text: str) -> None:
         if not text:

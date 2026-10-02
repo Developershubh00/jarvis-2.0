@@ -153,6 +153,45 @@ def check_mac_permissions(r: Report) -> None:
     r.add(INFO, "Automation: macOS asks the first time Jarvis controls each app (Music, Notes...). Click OK.")
 
 
+def check_voice(r: Report, cfg, hardware: bool = True) -> None:
+    r.section("Microphone and speech")
+    from .voice.recorder import MIC_PERMISSION_HINT
+    from .voice.stt import Transcriber
+
+    stt = Transcriber(cfg)
+    if stt.is_cached():
+        r.add(OK, f"Speech model {stt.model_name}: downloaded")
+    else:
+        r.add(INFO, f"Speech model {stt.model_name}: not downloaded yet",
+              f"It downloads by itself the first time you talk ({stt.download_size}, once). Try ./run.sh --listen.")
+    if not hardware:
+        return
+    try:
+        import numpy as np
+        import sounddevice as sd
+    except Exception as e:
+        r.add(FAIL, "Microphone: sounddevice isn't working", f"{type(e).__name__}: {e}")
+        return
+    try:
+        device = sd.query_devices(cfg.voice.input_device, kind="input")
+        r.add(OK, f"Microphone: {device['name']}")
+    except Exception as e:
+        r.add(FAIL, "No microphone found", f"{e}. Check System Settings, Sound, Input, or set voice.input_device.")
+        return
+    try:
+        audio = sd.rec(16_000, samplerate=16_000, channels=1, dtype="float32", device=cfg.voice.input_device)
+        sd.wait()
+    except Exception as e:
+        r.add(FAIL, "Couldn't record from the microphone", str(e))
+        return
+    rms = float(np.sqrt(np.mean(np.square(audio))))
+    if rms == 0.0:
+        r.add(FAIL, "The microphone gives pure silence", MIC_PERMISSION_HINT)
+    else:
+        r.add(OK, f"Microphone level: {rms:.4f} during a 1-second test",
+              f"Quiet rooms are usually below {cfg.voice.vad_threshold}; speech is well above it.")
+
+
 def check_api(r: Report, cfg, client=None) -> None:
     r.section("Claude API")
     if client is None:
@@ -186,14 +225,17 @@ def check_api(r: Report, cfg, client=None) -> None:
     r.add(OK, f"Claude replied: {text or '(empty reply)'}", f"{cfg.llm.model}, {time.monotonic() - started:.1f}s")
 
 
-def run_doctor(cfg, out=None, client=None) -> int:
-    """Run every check. Returns 0 when nothing failed, 1 otherwise."""
+def run_doctor(cfg, out=None, client=None, hardware: bool = True) -> int:
+    """Run every check. Returns 0 when nothing failed, 1 otherwise.
+
+    hardware=False skips the 1-second microphone recording (the tests use that)."""
     r = Report(out)
     r.line(r.paint("1", f"Jarvis {__version__} doctor (phase {PHASE} of 10)"))
     check_system(r)
     check_packages(r)
     check_config(r, cfg)
     check_mac_permissions(r)
+    check_voice(r, cfg, hardware)
     check_api(r, cfg, client)
     fails, warns = r.count(FAIL), r.count(WARN)
     r.line()

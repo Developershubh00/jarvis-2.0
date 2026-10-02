@@ -205,7 +205,7 @@ class DoctorTests(Hermetic):
 
     def test_full_report(self):
         out = io.StringIO()
-        code = run_doctor(self.load(), out=out, client=fake_claude(claude_says("Jarvis online.")))
+        code = run_doctor(self.load(), out=out, client=fake_claude(claude_says("Jarvis online.")), hardware=False)
         text = out.getvalue()
         self.assertIn(f"phase {PHASE} of 10", text)
         self.assertIn("Claude replied: Jarvis online.", text)

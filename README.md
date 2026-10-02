@@ -4,7 +4,7 @@ A voice-first AI assistant for your Mac. Press a hotkey, say what you need, and 
 
 Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain. GitHub stores the code and runs the automatic tests; Jarvis itself runs on your Mac.
 
-> **Status: phase 4 of 10 (Mac control).** Jarvis can now open apps and websites, control apps with AppleScript (volume, dark mode, Music, Notes, Reminders and more), use the clipboard, show notifications and type into other apps. Next up: listening through the microphone.
+> **Status: phase 5 of 10 (ears).** Jarvis can now hear you: talk to it in the terminal, with speech recognition running offline on your Mac. Replies are still text; speaking them aloud arrives in phase 6.
 
 ## Roadmap
 
@@ -14,7 +14,7 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **2. Brain** ✅ | Claude agent loop, streaming replies, web search, memory, chat in Terminal | `./run.sh --cli` |
 | **3. Files and terminal** ✅ | Read, write and edit files; run commands with safety checks and backups | "Make a Python script that prints the first 20 primes and run it" |
 | **4. Mac control** ✅ | Open apps and websites, AppleScript, clipboard, notifications, typing into apps | "Open GitHub in Safari" |
-| 5. Ears | Microphone with voice detection, offline Whisper speech-to-text | `./run.sh --cli --voice` |
+| **5. Ears** ✅ | Microphone with voice detection, offline Whisper speech-to-text | `./run.sh --cli --voice` |
 | 6. Voice | Spoken replies, the assistant engine, Esc to cancel, follow-up questions | Talk to it in Terminal |
 | 7. Menu-bar app | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
 | 8. Floating panel | Glass panel with an animated orb and live text | Watch it listen, think and speak |
@@ -68,6 +68,25 @@ For a single question without opening the chat: `./run.sh --say "What's the capi
 
 Without an API key, Jarvis explains how to add one instead of starting.
 
+## Talk to Jarvis
+
+First, test your microphone. This needs no API key, and your voice never leaves your Mac:
+
+```bash
+./run.sh --listen
+```
+
+Press Enter, say something, then pause; your words appear on screen. The first time, Jarvis downloads its speech model (about 480 MB, once), and macOS asks to let your terminal use the microphone: click OK.
+
+Then talk to Jarvis with `./run.sh --cli --voice`. Press Enter on an empty line, speak, and pause when you're done; you can still type messages too. Ctrl+C stops listening.
+
+Tips:
+
+- Recording stops about a second after you stop talking. If it cuts you off, raise `voice.silence_seconds`; if it keeps listening in a noisy room, raise `voice.vad_threshold` (try 0.02).
+- `voice.stt_model: base.en` is faster but less accurate; `medium.en` is more accurate but slower.
+- Add names and jargon it should recognise to `voice.vocabulary`.
+- To use another microphone, set `voice.input_device` to its name (`./run.sh --doctor` shows the current one).
+
 ## Files, commands and safety
 
 Jarvis creates projects and documents in **~/JarvisWorkspace** (one folder per project) unless you name another place. It can also read files anywhere you point it to: code, text, PDFs, Word documents and images.
@@ -85,6 +104,7 @@ To be asked before every command, set `safety.confirm_shell: always` in `config.
 macOS asks before Jarvis can control things, and each permission belongs to the app you run Jarvis from (Terminal or iTerm):
 
 - **Automation**: the first time Jarvis controls an app such as Music, Notes or System Events, macOS asks "Terminal wants access to control…". Click OK. You can change this later in System Settings, Privacy & Security, Automation.
+- **Microphone**: macOS asks the first time Jarvis listens. If it only hears silence, turn on your terminal app in System Settings, Privacy & Security, Microphone, then quit and reopen the terminal.
 - **Accessibility**: needed to type into other apps and read selected text. Turn on your terminal app in System Settings, Privacy & Security, Accessibility, then restart Jarvis.
 - **Files and Folders**: macOS may ask the first time Jarvis reads your Desktop, Documents or Downloads.
 
@@ -146,6 +166,7 @@ jarvis/
 │   │   └── memory_tools.py    remember facts about you
 │   ├── ui/                how Jarvis shows things (the terminal now; the menu bar later)
 │   ├── mac.py             macOS helpers: AppleScript, clipboard, keystrokes, permissions
+│   ├── voice/             the microphone (recorder.py) and offline speech recognition (stt.py)
 │   ├── config.py          loads settings: defaults, then config.yaml, then config.local.yaml
 │   ├── claude_client.py   Claude API client and plain-English error messages
 │   └── doctor.py          the ./run.sh --doctor health check
@@ -171,4 +192,6 @@ GitHub Actions runs the same tests on every push; see the **Actions** tab of you
 - **"Your API credit balance is too low"**: add credits under Billing in the Claude Console.
 - **The model wasn't found**: check `llm.model` in `config.local.yaml` for typos.
 - **"macOS blocked access" when reading a file**: allow your terminal app under System Settings, Privacy & Security, Files and Folders (or Full Disk Access).
+- **"The microphone is giving pure silence"**: allow Microphone access for your terminal app (see Mac permissions), then quit and reopen the terminal.
+- **The speech model download fails**: it needs internet the first time only; check your connection and run `./run.sh --listen` again.
 - **SSL or certificate errors with the python.org installer**: open Applications, then Python 3.12, and run "Install Certificates.command".
