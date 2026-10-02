@@ -85,6 +85,25 @@ class MenuPanel:
     def set_capture_hidden(self, hidden: bool) -> None: ...
 
 
+class PanelGroup:
+    """Sends every update to several panels (the floating panel and the menu's status line).
+    A call returns the first panel's answer; panels without that method are skipped."""
+
+    def __init__(self, *panels) -> None:
+        self.panels = [p for p in panels if p is not None]
+
+    def __getattr__(self, name: str):
+        targets = [getattr(p, name) for p in self.panels if hasattr(p, name)]
+        if not targets:
+            raise AttributeError(name)
+
+        def call(*args, **kwargs):
+            results = [fn(*args, **kwargs) for fn in targets]
+            return results[0]
+
+        return call
+
+
 class NullOverlay:
     """The tutor pointer arrives in phase 9."""
 

@@ -4,7 +4,7 @@ A voice-first AI assistant for your Mac. Press a hotkey, say what you need, and 
 
 Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain. GitHub stores the code and runs the automatic tests; Jarvis itself runs on your Mac.
 
-> **Status: phase 7 of 10 (menu-bar app).** Jarvis now lives in your menu bar. Press ⌃⌥C in any app (or hold the right Option key), speak, and it answers out loud; ⌃⌥J types a request instead. Next up: a floating glass panel showing what Jarvis hears and says.
+> **Status: phase 8 of 10 (floating panel).** A glass panel now shows what Jarvis hears, does and says, with an animated orb that reacts to your voice. Next up: tutor mode, where Jarvis sees your screen and points at things.
 
 ## Roadmap
 
@@ -17,7 +17,7 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **5. Ears** ✅ | Microphone with voice detection, offline Whisper speech-to-text | `./run.sh --cli --voice` |
 | **6. Voice** ✅ | Spoken replies, the assistant engine, Esc to cancel, follow-up questions | Talk to it in Terminal |
 | **7. Menu-bar app** ✅ | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
-| 8. Floating panel | Glass panel with an animated orb and live text | Watch it listen, think and speak |
+| **8. Floating panel** ✅ | Glass panel with an animated orb and live text | Watch it listen, think and speak |
 | 9. Tutor mode | ⌃⌥T: Jarvis sees your screen and guides you with an animated pointer | "Explain what's on my screen" |
 | 10. Polish | "Hey Jarvis" wake word, hold-to-talk, launch at login, full permission checks | `./run.sh --doctor` all green |
 
@@ -58,7 +58,11 @@ A Jarvis icon appears in the menu bar. Then, in any app:
 | ⌃⌥J | type a request in a small box instead |
 | Esc | stop listening or speaking (press it twice to stop a task that's running) |
 
-The icon shows what Jarvis is doing (waveform: ready, microphone: listening, sparkles: thinking, speaker: speaking), and the top line of its menu shows the latest status. The menu also has Talk, Type a request, Stop, Copy last reply, New conversation, Open workspace folder, Edit settings, Open log and Quit.
+While Jarvis works, a glass panel appears in the top-right corner. Its orb shows the state at a glance: an ice-blue halo that swells with your voice while listening, circling periwinkle arcs while thinking, amber ripples while speaking, and coral when something needs your attention. Next to it you see what Jarvis heard, each step it takes, and its reply as it's written. The panel hides itself a few seconds after Jarvis finishes, but stays while your mouse is over it; drag it anywhere, or bring it back with Show panel in the menu.
+
+The menu-bar icon shows the same states (waveform, microphone, sparkles, speaker), and the menu has Talk, Type a request, Stop, Show panel, Copy last reply, New conversation, Open workspace folder, Edit settings, Open log and Quit.
+
+Panel settings: `ui.hud_position` (top-right, top-left, bottom-right or bottom-left) and `ui.hud_autohide_seconds`.
 
 The first time, macOS asks for **Accessibility** permission for your terminal app (System Settings, Privacy & Security, Accessibility). Turn it on and the hotkeys start working within a few seconds; no restart needed. Keep the Terminal window open while Jarvis runs, because closing it quits Jarvis (starting at login arrives in phase 10).
 
@@ -194,7 +198,9 @@ jarvis/
 │   ├── ui/                how Jarvis shows things
 │   │   ├── app.py             the menu-bar app (icon, menu, notifications)
 │   │   ├── hotkeys.py         global hotkeys and hold-to-talk
-│   │   └── menu_panel.py      status in the menu bar (the floating panel arrives in phase 8)
+│   │   ├── hud.py             the floating glass panel (AppKit drawing)
+│   │   ├── hud_logic.py       the panel's orb shapes, text layout and placement (plain Python)
+│   │   └── menu_panel.py      status in the menu bar, and the fallback if the panel can't start
 │   ├── mac.py             macOS helpers: AppleScript, clipboard, keystrokes, permissions
 │   ├── assistant.py       the assistant engine: listening, thinking, speaking, quick phrases, cancelling
 │   ├── voice/             the microphone (recorder.py), speech recognition (stt.py) and speech (tts.py)

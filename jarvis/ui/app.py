@@ -1,7 +1,6 @@
-"""The menu-bar app: a status-bar icon and menu plus global hotkeys, wired to the assistant engine.
-
-Phase 7 shows Jarvis's state through the menu bar (icon and status line) and notifications. The floating
-glass panel arrives in phase 8 and the tutor pointer in phase 9; both plug into the same bridge.
+"""The menu-bar app: a status-bar icon and menu, the floating panel and global hotkeys, wired to the
+assistant engine. If the floating panel can't start, Jarvis falls back to the menu bar and notifications.
+The tutor pointer arrives in phase 9.
 """
 from __future__ import annotations
 
@@ -23,7 +22,7 @@ from .. import mac
 from ..assistant import Assistant
 from . import UIBridge
 from .hotkeys import PTT_DISPLAY, Hotkey, HotkeyError, HotkeyManager, parse_hotkey, parse_ptt
-from .menu_panel import MenuPanel, NullOverlay, short
+from .menu_panel import MenuPanel, NullOverlay, PanelGroup, short
 
 log = logging.getLogger(__name__)
 
@@ -62,6 +61,9 @@ class JarvisMenuTarget(NSObject):
 
     def stopNow_(self, sender):
         dispatch(self, "menu_stop")
+
+    def showPanel_(self, sender):
+        dispatch(self, "menu_show_panel")
 
     def copyLast_(self, sender):
         dispatch(self, "menu_copy_last")
@@ -192,8 +194,12 @@ class JarvisApp:
         self.nsapp = NSApplication.sharedApplication()
         self.nsapp.setActivationPolicy_(ACCESSORY_POLICY)
         self._parse_hotkeys()
-        self.hud = MenuPanel(set_status=self.set_status_line, notify=self.notify, name=str(self.cfg.assistant_name),
-                             idle_hint=self.idle_hint(), notify_replies=not bool(self.cfg.voice.tts))
+        panel = self._make_panel()
+        menu_line = MenuPanel(set_status=self.set_status_line, name=str(self.cfg.assistant_name),
+                              idle_hint=self.idle_hint(), notify_replies=panel is None and not bool(self.cfg.voice.tts),
+                              notify=self.notify if panel is None else (lambda title, message: None))
+        self.has_panel = panel is not None
+        self.hud = PanelGroup(panel, menu_line) if panel is not None else menu_line
         self.overlay = NullOverlay()
         self.ui = AppUIBridge(self)
         self.assistant = Assistant(self.cfg, self.ui)
@@ -201,6 +207,15 @@ class JarvisApp:
         self.assistant.start(preload=preload)
         self._install_hotkeys()
         self._welcome()
+
+    def _make_panel(self):
+        try:
+            from .hud import Hud
+
+            return Hud(self.cfg, idle_hint=self.idle_hint())
+        except Exception:
+            log.exception("The floating panel couldn't start; showing status in the menu bar instead")
+            return None
 
     def _parse_hotkeys(self) -> None:
         for action in ACTIONS:
@@ -254,6 +269,7 @@ class JarvisApp:
         item("Type a request…", "typeCommand:", self.bindings.get("type"))
         item("Stop", "stopNow:")
         menu.addItem_(NSMenuItem.separatorItem())
+        item("Show panel", "showPanel:")
         item("Copy last reply", "copyLast:")
         item("New conversation", "newConversation:")
         menu.addItem_(NSMenuItem.separatorItem())
@@ -305,6 +321,8 @@ class JarvisApp:
         if ok:
             if self.hotkey_attempts > 0:
                 mac.notify(str(self.cfg.assistant_name), "Hotkeys are working now.")
+                self.apply_state("idle", f"{self.cfg.assistant_name} is ready", self.idle_hint())
+                self.hud.schedule_hide(6)
             return
         self.hotkey_attempts += 1
         if self.hotkey_attempts == 1:
@@ -330,7 +348,7 @@ class JarvisApp:
         if self.hotkeys is not None and self.hotkeys.tap is not None:
             self.apply_state("idle", f"{self.cfg.assistant_name} is ready", self.idle_hint())
             self.hud.show()
-            self.apply_state("idle")
+            self.hud.schedule_hide(8)
 
     # ------------------------------------------------------------ state, hints
 
@@ -365,6 +383,10 @@ class JarvisApp:
     def menu_stop(self) -> None:
         self.assistant._last_escape = time.monotonic()  # menu Stop needs no double press
         self.assistant.on_cancel()
+
+    def menu_show_panel(self) -> None:
+        self.hud.show()
+        self.hud.schedule_hide(float(self.cfg.ui.hud_autohide_seconds))
 
     def menu_copy_last(self) -> None:
         if self.last_response:

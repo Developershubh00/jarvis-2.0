@@ -383,9 +383,11 @@ class MenuBarAppTests(unittest.TestCase):
     def test_menu_bar_icon_menu_and_hotkeys(self):
         app = self.build()
         titles = [item.title for item in app.status_item.menu.items]
-        self.assertEqual(titles[2:], ["Talk", "Type a request…", "Stop", "-", "Copy last reply", "New conversation",
-                                      "-", "Open workspace folder", "Edit settings", "Open log", "-", "Quit Jarvis"])
-        self.assertTrue(titles[0].startswith("Ready."))
+        self.assertEqual(titles[2:], ["Talk", "Type a request…", "Stop", "-", "Show panel", "Copy last reply",
+                                      "New conversation", "-", "Open workspace folder", "Edit settings", "Open log",
+                                      "-", "Quit Jarvis"])
+        self.assertTrue(titles[0].startswith("Jarvis is ready."))
+        self.assertFalse(app.has_panel)  # no AppKit here, so the menu bar shows status (the phase 7 fallback)
         talk = app.status_item.menu.items[2]
         self.assertEqual((talk.key, talk.mods), ("c", MOD_CTRL | MOD_ALT))
         self.assertEqual(app.hotkeys.tap, "tap")
