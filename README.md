@@ -4,7 +4,7 @@ A voice-first AI assistant for your Mac. Press a hotkey, say what you need, and 
 
 Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain. GitHub stores the code and runs the automatic tests; Jarvis itself runs on your Mac.
 
-> **Status: phase 8 of 10 (floating panel).** A glass panel now shows what Jarvis hears, does and says, with an animated orb that reacts to your voice. Next up: tutor mode, where Jarvis sees your screen and points at things.
+> **Status: phase 9 of 10 (tutor mode).** Press ⌃⌥T and ask about anything on your screen: Jarvis looks, explains, and an animated pointer shows you exactly where to click, step by step. Next up: the finishing touches (wake word, start at login, full permission checks).
 
 ## Roadmap
 
@@ -18,7 +18,7 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **6. Voice** ✅ | Spoken replies, the assistant engine, Esc to cancel, follow-up questions | Talk to it in Terminal |
 | **7. Menu-bar app** ✅ | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
 | **8. Floating panel** ✅ | Glass panel with an animated orb and live text | Watch it listen, think and speak |
-| 9. Tutor mode | ⌃⌥T: Jarvis sees your screen and guides you with an animated pointer | "Explain what's on my screen" |
+| **9. Tutor mode** ✅ | ⌃⌥T: Jarvis sees your screen and guides you with an animated pointer | "Explain what's on my screen" |
 | 10. Polish | "Hey Jarvis" wake word, hold-to-talk, launch at login, full permission checks | `./run.sh --doctor` all green |
 
 ## What you need
@@ -55,6 +55,7 @@ A Jarvis icon appears in the menu bar. Then, in any app:
 |---|---|
 | ⌃⌥C (Control+Option+C) | start talking; press it again to finish early |
 | Hold the right ⌥ Option key | talk while you hold it, release to send |
+| ⌃⌥T | tutor mode: ask about anything on your screen |
 | ⌃⌥J | type a request in a small box instead |
 | Esc | stop listening or speaking (press it twice to stop a task that's running) |
 
@@ -69,6 +70,19 @@ The first time, macOS asks for **Accessibility** permission for your terminal ap
 Why not just "c"? A single letter would fire every time you type it, so hotkeys need modifiers. You can change them in `config.local.yaml`, for example `talk: "f5"` under `hotkeys:` (on a MacBook, press fn+F5, or turn on "Use F1, F2, etc. keys as standard function keys" in System Settings, Keyboard).
 
 Without an API key you can still try the hotkeys: Jarvis listens, shows what it heard in the menu, and then tells you it needs a key.
+
+## Tutor mode: learn with a pointer
+
+Press ⌃⌥T (or choose Tutor mode in the menu) and ask about whatever is on your screen. Jarvis takes a screenshot, explains, and a glowing amber pointer glides to each thing it mentions, with a short label that it reads out. Some things to try:
+
+- "How do I commit my changes in VS Code?"
+- "What does this error mean, and how do I fix it?"
+- "Walk me through submitting this form."
+- "Where do I change the font size in this app?"
+
+For homework and assignments Jarvis teaches first: it explains the idea and gives hints, and gives a full solution when you ask for one, with every step explained. The pointer disappears after `ui.pointer_hide_seconds` (25 by default) or when you press Esc. Tutor mode works in the terminal chat too: `/tutor <your question>`.
+
+The first time, macOS asks for **Screen Recording** permission for your terminal app. Turn it on in System Settings, Privacy & Security, Screen Recording, then quit and reopen the terminal (macOS only applies this permission after a restart). Without it, Jarvis only sees your desktop background.
 
 ## Chat with Jarvis in the terminal
 
@@ -194,13 +208,16 @@ jarvis/
 │   │   ├── file_tools.py      read, write, edit and list files
 │   │   ├── shell_tools.py     run terminal commands, asking first for risky ones
 │   │   ├── mac_tools.py       open apps and sites, AppleScript, clipboard, typing, notifications
+│   │   ├── screen_tools.py    screenshots and the tutor pointer
 │   │   └── memory_tools.py    remember facts about you
 │   ├── ui/                how Jarvis shows things
 │   │   ├── app.py             the menu-bar app (icon, menu, notifications)
 │   │   ├── hotkeys.py         global hotkeys and hold-to-talk
 │   │   ├── hud.py             the floating glass panel (AppKit drawing)
 │   │   ├── hud_logic.py       the panel's orb shapes, text layout and placement (plain Python)
-│   │   └── menu_panel.py      status in the menu bar, and the fallback if the panel can't start
+│   │   ├── menu_panel.py      status in the menu bar, and the fallback if the panel can't start
+│   │   ├── overlay.py         the tutor pointer (AppKit drawing)
+│   │   └── overlay_logic.py   the pointer's shape, label placement and glide (plain Python)
 │   ├── mac.py             macOS helpers: AppleScript, clipboard, keystrokes, permissions
 │   ├── assistant.py       the assistant engine: listening, thinking, speaking, quick phrases, cancelling
 │   ├── voice/             the microphone (recorder.py), speech recognition (stt.py) and speech (tts.py)
@@ -229,6 +246,7 @@ GitHub Actions runs the same tests on every push; see the **Actions** tab of you
 - **"Your API credit balance is too low"**: add credits under Billing in the Claude Console.
 - **The model wasn't found**: check `llm.model` in `config.local.yaml` for typos.
 - **The hotkeys don't do anything**: turn on your terminal app in System Settings, Privacy & Security, Accessibility. Also make sure Terminal's Secure Keyboard Entry (in the Terminal menu) is off, because it hides keystrokes from every other app.
+- **Tutor mode only sees the desktop background**: allow Screen Recording for your terminal app, then quit and reopen the terminal.
 - **"macOS blocked access" when reading a file**: allow your terminal app under System Settings, Privacy & Security, Files and Folders (or Full Disk Access).
 - **"The microphone is giving pure silence"**: allow Microphone access for your terminal app (see Mac permissions), then quit and reopen the terminal.
 - **The speech model download fails**: it needs internet the first time only; check your connection and run `./run.sh --listen` again.

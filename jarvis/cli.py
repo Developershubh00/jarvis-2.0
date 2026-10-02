@@ -20,6 +20,7 @@ HELP = """Commands:
   /new             start a new conversation
   /memory          list what Jarvis remembers about you
   /forget <text>   forget memories that match (or a number from /memory)
+  /tutor <question>  ask about what's on your screen (Jarvis takes a screenshot)
   /usage           tokens used this session
   /help            show this help
   /quit            leave (Ctrl+D works too)
@@ -66,9 +67,10 @@ class Chat:
     def stt(self):
         return self.assistant._get_stt()
 
-    def ask(self, text: str, source: str = "cli") -> str | None:
-        """Send one typed (or already transcribed) message. Returns the reply, or None if stopped or failed."""
-        return self.assistant.process_text(text, source=source) or None
+    def ask(self, text: str, source: str = "cli", tutor: bool = False) -> str | None:
+        """Send one typed (or already transcribed) message. Returns the reply, or None if stopped or failed.
+        tutor=True attaches a screenshot of the screen."""
+        return self.assistant.process_text(text, tutor=tutor, source=source) or None
 
     def listen(self, follow_up: bool = False) -> str | None:
         """Listen for one spoken request, then answer it. Returns the reply, or None."""
@@ -217,6 +219,10 @@ def run_cli(cfg, chat: Chat | None = None, voice: bool = False) -> int:
                 run_interruptibly(chat, chat.listen)
                 while chat.assistant.follow_up_pending:  # Jarvis asked a question: listen for the answer
                     run_interruptibly(chat, chat.listen, True)
+            continue
+        if line.lower().startswith("/tutor"):
+            question = line[len("/tutor"):].strip() or "What am I looking at on my screen?"
+            run_interruptibly(chat, chat.ask, question, "cli", True)
             continue
         if line.startswith("/"):
             if handle_command(chat, line) == "quit":

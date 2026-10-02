@@ -383,7 +383,8 @@ class MenuBarAppTests(unittest.TestCase):
     def test_menu_bar_icon_menu_and_hotkeys(self):
         app = self.build()
         titles = [item.title for item in app.status_item.menu.items]
-        self.assertEqual(titles[2:], ["Talk", "Type a request…", "Stop", "-", "Show panel", "Copy last reply",
+        self.assertEqual(titles[2:], ["Talk", "Tutor mode (sees your screen)", "Type a request…", "Stop", "-",
+                                      "Show panel", "Copy last reply",
                                       "New conversation", "-", "Open workspace folder", "Edit settings", "Open log",
                                       "-", "Quit Jarvis"])
         self.assertTrue(titles[0].startswith("Jarvis is ready."))
@@ -393,8 +394,8 @@ class MenuBarAppTests(unittest.TestCase):
         self.assertEqual(app.hotkeys.tap, "tap")
         self.assertEqual(app.nsapp.policy, 1)  # no Dock icon
         self.assertEqual(app.status_item.button().image.name, "waveform.circle")
-        self.assertIn(("Jarvis", "Jarvis is ready. Press ⌃⌥C or hold right ⌥ Option and speak. ⌃⌥J to type instead."),
-                      self.notes)
+        self.assertIn(("Jarvis", "Jarvis is ready. Press ⌃⌥C or hold right ⌥ Option and speak. "
+                                 "⌃⌥T shows me your screen, ⌃⌥J lets you type."), self.notes)
 
     def test_states_reach_the_icon_and_the_status_line(self):
         app = self.build()
@@ -413,8 +414,12 @@ class MenuBarAppTests(unittest.TestCase):
         app.assistant.on_talk.assert_called_once_with(tutor=False)
         app.on_hotkey("type")
         app.assistant.on_type.assert_called_once()
+        app.on_hotkey("tutor")
+        app.assistant.on_talk.assert_called_with(tutor=True)
+        app.menu_tutor()
+        self.assertEqual(app.assistant.on_talk.call_count, 3)
         app.menu_target.talk_(None)  # a click on "Talk" in the menu
-        self.assertEqual(app.assistant.on_talk.call_count, 2)
+        self.assertEqual(app.assistant.on_talk.call_count, 4)
         app.menu_stop()
         app.assistant.on_cancel.assert_called_once()
         app.menu_new_conversation()
@@ -473,12 +478,12 @@ class DoctorHotkeyTests(unittest.TestCase):
         out = io.StringIO()
         r = Report(out, color=False)
         check_hotkeys(r, good)
-        self.assertEqual([s for s, _, _ in r.items], [OK, OK, OK])
+        self.assertEqual([s for s, _, _ in r.items], [OK, OK, OK, OK])
         self.assertIn("Talk: ⌃⌥C", out.getvalue())
         self.assertIn("Hold to talk: right ⌥ Option", out.getvalue())
         r = Report(io.StringIO(), color=False)
         check_hotkeys(r, bad)
-        self.assertEqual([s for s, _, _ in r.items], [WARN, OK, WARN])
+        self.assertEqual([s for s, _, _ in r.items], [WARN, OK, OK, WARN])
 
 
 if __name__ == "__main__":

@@ -152,6 +152,13 @@ def check_mac_permissions(r: Report) -> None:
               "Needed for the global hotkeys, typing into other apps and reading selected text. Open System "
               "Settings, Privacy & Security, "
               "Accessibility, turn on your terminal app (Terminal or iTerm), then restart Jarvis.")
+    screen = mac.screen_recording_allowed()
+    if screen is True:
+        r.add(OK, "Screen Recording: allowed (tutor mode)")
+    elif screen is False:
+        r.add(WARN, "Screen Recording: not allowed yet",
+              "Tutor mode needs it to see other apps' windows. Open System Settings, Privacy & Security, Screen "
+              "Recording, turn on your terminal app, then quit and reopen the terminal.")
     r.add(INFO, "Automation: macOS asks the first time Jarvis controls each app (Music, Notes...). Click OK.")
 
 
@@ -210,7 +217,7 @@ def check_hotkeys(r: Report, cfg) -> None:
     from .ui.hotkeys import PTT_DISPLAY, HotkeyError, parse_hotkey, parse_ptt
 
     r.section("Hotkeys")
-    for action, label in (("talk", "Talk"), ("type", "Type a request")):
+    for action, label in (("talk", "Talk"), ("tutor", "Tutor mode"), ("type", "Type a request")):
         spec = getattr(cfg.hotkeys, action, "")
         if not spec:
             r.add(INFO, f"{label}: off")

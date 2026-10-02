@@ -1,6 +1,6 @@
 """The menu-bar app: a status-bar icon and menu, the floating panel and global hotkeys, wired to the
-assistant engine. If the floating panel can't start, Jarvis falls back to the menu bar and notifications.
-The tutor pointer arrives in phase 9.
+assistant engine, plus the tutor pointer. If the floating panel can't start, Jarvis falls back to the
+menu bar and notifications; if the pointer can't start, tutor mode still explains, just without pointing.
 """
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ STATE_SYMBOLS = {
     "error": "exclamationmark.triangle",
 }
 DEFAULT_KEYS = {"talk": "ctrl+alt+c", "tutor": "ctrl+alt+t", "type": "ctrl+alt+j"}
-ACTIONS = ("talk", "type")  # the tutor hotkey arrives with tutor mode in phase 9
+ACTIONS = ("talk", "tutor", "type")
 FUNCTION_KEY_CHARS = {f"f{i}": chr(0xF704 + i - 1) for i in range(1, 21)}
 
 
@@ -55,6 +55,9 @@ class JarvisMenuTarget(NSObject):
 
     def talk_(self, sender):
         dispatch(self, "menu_talk")
+
+    def tutor_(self, sender):
+        dispatch(self, "menu_tutor")
 
     def typeCommand_(self, sender):
         dispatch(self, "menu_type")
@@ -200,7 +203,7 @@ class JarvisApp:
                               notify=self.notify if panel is None else (lambda title, message: None))
         self.has_panel = panel is not None
         self.hud = PanelGroup(panel, menu_line) if panel is not None else menu_line
-        self.overlay = NullOverlay()
+        self.overlay = self._make_overlay()
         self.ui = AppUIBridge(self)
         self.assistant = Assistant(self.cfg, self.ui)
         self._build_status_item()
@@ -216,6 +219,17 @@ class JarvisApp:
         except Exception:
             log.exception("The floating panel couldn't start; showing status in the menu bar instead")
             return None
+
+    def _make_overlay(self):
+        if not self.has_panel:  # the pointer shares the panel's drawing helpers
+            return NullOverlay()
+        try:
+            from .overlay import TutorOverlay
+
+            return TutorOverlay()
+        except Exception:
+            log.exception("The tutor pointer couldn't start; tutor mode will explain without pointing")
+            return NullOverlay()
 
     def _parse_hotkeys(self) -> None:
         for action in ACTIONS:
@@ -240,8 +254,12 @@ class JarvisApp:
         if self.ptt:
             parts.append(f"hold {PTT_DISPLAY[self.ptt]}")
         start = " or ".join(parts) if parts else "Click the menu bar icon"
-        typing = f" {self.bindings['type'].pretty()} to type instead." if "type" in self.bindings else ""
-        return f"{start} and speak.{typing}"
+        extras = []
+        if "tutor" in self.bindings:
+            extras.append(f"{self.bindings['tutor'].pretty()} shows me your screen")
+        if "type" in self.bindings:
+            extras.append(f"{self.bindings['type'].pretty()} lets you type")
+        return f"{start} and speak." + (f" {', '.join(extras)}." if extras else "")
 
     def _build_status_item(self) -> None:
         self.status_item = NSStatusBar.systemStatusBar().statusItemWithLength_(-1)
@@ -266,6 +284,7 @@ class JarvisApp:
             menu.addItem_(entry)
 
         item("Talk", "talk:", self.bindings.get("talk"))
+        item("Tutor mode (sees your screen)", "tutor:", self.bindings.get("tutor"))
         item("Type a request…", "typeCommand:", self.bindings.get("type"))
         item("Stop", "stopNow:")
         menu.addItem_(NSMenuItem.separatorItem())
@@ -376,6 +395,9 @@ class JarvisApp:
 
     def menu_talk(self) -> None:
         self.assistant.on_talk(tutor=False)
+
+    def menu_tutor(self) -> None:
+        self.assistant.on_talk(tutor=True)
 
     def menu_type(self) -> None:
         self.assistant.on_type()
