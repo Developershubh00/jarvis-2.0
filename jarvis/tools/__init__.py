@@ -56,6 +56,7 @@ class ToolContext:
     frontmost: dict | None = None       # the app the user was in when they called Jarvis
     shot: Any = None                    # latest mac.Shot (needed by point_at)
     speak: Callable[[str], None] | None = None  # blocking speech, raises Cancelled if stopped
+    host_app: dict | None = None        # the terminal running Jarvis in --cli mode (never type into it)
 
     @property
     def workspace(self) -> Path:
@@ -174,7 +175,7 @@ class ToolRegistry:
 
 
 # Tool modules, in the order their tools are offered to Claude. Each later phase adds modules here.
-TOOL_MODULES = ("file_tools", "shell_tools", "memory_tools")
+TOOL_MODULES = ("file_tools", "shell_tools", "mac_tools", "memory_tools")
 
 
 def build_registry(cfg: Any = None) -> ToolRegistry:

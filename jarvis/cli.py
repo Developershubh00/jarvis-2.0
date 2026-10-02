@@ -5,7 +5,7 @@ import importlib
 import logging
 import threading
 
-from . import prompts
+from . import mac, prompts
 from .brain import SEARCH_ACTIVITY, Brain, BrainError
 from .claude_client import get_api_key
 from .config import ENV_PATH
@@ -43,11 +43,13 @@ class Chat:
         self.memory = memory if memory is not None else Memory(cfg.paths.memory_file)
         self.brain = brain or Brain(cfg, build_registry(cfg), self.memory)
         self.cancel = threading.Event()
+        self.host_app = mac.frontmost_app()  # the terminal we're running in: never type into it
 
     def ask(self, text: str) -> str | None:
         """Send one message and stream the answer. Returns the reply, or None if stopped or failed."""
         self.cancel.clear()
-        ctx = ToolContext(cfg=self.cfg, ui=self.ui, memory=self.memory, cancel=self.cancel)
+        ctx = ToolContext(cfg=self.cfg, ui=self.ui, memory=self.memory, cancel=self.cancel,
+                          host_app=self.host_app)
         content = prompts.turn_context(self.cfg, source="cli") + "\n\n" + text
         self.ui.begin_turn()
         try:

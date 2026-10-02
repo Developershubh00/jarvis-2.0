@@ -138,6 +138,21 @@ def check_config(r: Report, cfg) -> None:
         r.add(FAIL, f"Workspace isn't writable: {workspace}", f"{e}. Set paths.workspace in config.local.yaml.")
 
 
+def check_mac_permissions(r: Report) -> None:
+    if sys.platform != "darwin":
+        return
+    from . import mac
+
+    r.section("Mac permissions")
+    if mac.accessibility_trusted(prompt=False):
+        r.add(OK, "Accessibility: allowed (typing into apps, reading selected text)")
+    else:
+        r.add(WARN, "Accessibility: not allowed yet",
+              "Needed to type into other apps and read selected text. Open System Settings, Privacy & Security, "
+              "Accessibility, turn on your terminal app (Terminal or iTerm), then restart Jarvis.")
+    r.add(INFO, "Automation: macOS asks the first time Jarvis controls each app (Music, Notes...). Click OK.")
+
+
 def check_api(r: Report, cfg, client=None) -> None:
     r.section("Claude API")
     if client is None:
@@ -178,6 +193,7 @@ def run_doctor(cfg, out=None, client=None) -> int:
     check_system(r)
     check_packages(r)
     check_config(r, cfg)
+    check_mac_permissions(r)
     check_api(r, cfg, client)
     fails, warns = r.count(FAIL), r.count(WARN)
     r.line()

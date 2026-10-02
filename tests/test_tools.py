@@ -60,10 +60,14 @@ class Base(unittest.TestCase):
 
     @staticmethod
     def stop_background_jobs():
-        for pid in list(shell_tools.BACKGROUND_JOBS):
+        for pid, (_, _, proc) in list(shell_tools.BACKGROUND_JOBS.items()):
             try:
                 os.killpg(pid, signal.SIGKILL)
             except OSError:
+                pass
+            try:
+                proc.wait(timeout=2)
+            except Exception:
                 pass
         shell_tools.BACKGROUND_JOBS.clear()
 
@@ -103,7 +107,8 @@ class SafetyTests(Base):
 
 class FileToolTests(Base):
     def test_phase_three_tools(self):
-        self.assertEqual(self.reg.names(), ["read_file", "write_file", "edit_file", "list_dir", "run_shell", "memory"])
+        for name in ("read_file", "write_file", "edit_file", "list_dir", "run_shell", "memory"):
+            self.assertIn(name, self.reg.names())
         for schema in self.reg.schemas():
             self.assertEqual(schema["input_schema"]["type"], "object")
             self.assertTrue(schema["description"])

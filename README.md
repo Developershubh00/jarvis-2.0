@@ -4,7 +4,7 @@ A voice-first AI assistant for your Mac. Press a hotkey, say what you need, and 
 
 Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain. GitHub stores the code and runs the automatic tests; Jarvis itself runs on your Mac.
 
-> **Status: phase 3 of 10 (files and terminal).** Jarvis can now create, read and edit files and run terminal commands, so it writes and runs code for you. Risky actions need your OK. Next up: controlling Mac apps.
+> **Status: phase 4 of 10 (Mac control).** Jarvis can now open apps and websites, control apps with AppleScript (volume, dark mode, Music, Notes, Reminders and more), use the clipboard, show notifications and type into other apps. Next up: listening through the microphone.
 
 ## Roadmap
 
@@ -13,7 +13,7 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **1. Foundation** ✅ | Installer, settings, `--doctor` health check with a live Claude test, unit tests, GitHub CI | `./run.sh --doctor` |
 | **2. Brain** ✅ | Claude agent loop, streaming replies, web search, memory, chat in Terminal | `./run.sh --cli` |
 | **3. Files and terminal** ✅ | Read, write and edit files; run commands with safety checks and backups | "Make a Python script that prints the first 20 primes and run it" |
-| 4. Mac control | Open apps and websites, AppleScript, clipboard, notifications, typing into apps | "Open GitHub in Safari" |
+| **4. Mac control** ✅ | Open apps and websites, AppleScript, clipboard, notifications, typing into apps | "Open GitHub in Safari" |
 | 5. Ears | Microphone with voice detection, offline Whisper speech-to-text | `./run.sh --cli --voice` |
 | 6. Voice | Spoken replies, the assistant engine, Esc to cancel, follow-up questions | Talk to it in Terminal |
 | 7. Menu-bar app | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
@@ -54,6 +54,10 @@ Type a message and the answer streams in as Jarvis writes it. Some things to try
 - "Make a Python script that prints the first 20 prime numbers, and run it."
 - "Create a simple to-do list web page in a folder called todo and open it."
 - "Read ~/Downloads/assignment.pdf and list what I need to do."
+- "Open GitHub in Safari."
+- "Set the volume to 30% and turn on dark mode."
+- "Add a reminder to submit my assignment tomorrow at 9 am."
+- "Open TextEdit and type a short poem about the rain."
 - "What's new in the latest version of Python?" (searches the web)
 - "Remember that I'm learning React and prefer short answers."
 - "Explain recursion with a simple example, then quiz me."
@@ -72,8 +76,19 @@ Jarvis creates projects and documents in **~/JarvisWorkspace** (one folder per p
 - **System and credential folders are off limits**, such as /System, /usr, /etc, ~/.ssh and your Keychains.
 - **Existing files outside the workspace** are changed only after you agree, and the old version is kept in `data/backups`.
 - **Servers and long jobs** run in the background, with their output in `data/logs/background`.
+- **AppleScript that deletes, sends, empties the Trash or runs shell commands** is shown to you first, like risky commands.
 
 To be asked before every command, set `safety.confirm_shell: always` in `config.local.yaml`. (`never` turns the prompts off, which isn't recommended.)
+
+## Mac permissions
+
+macOS asks before Jarvis can control things, and each permission belongs to the app you run Jarvis from (Terminal or iTerm):
+
+- **Automation**: the first time Jarvis controls an app such as Music, Notes or System Events, macOS asks "Terminal wants access to control…". Click OK. You can change this later in System Settings, Privacy & Security, Automation.
+- **Accessibility**: needed to type into other apps and read selected text. Turn on your terminal app in System Settings, Privacy & Security, Accessibility, then restart Jarvis.
+- **Files and Folders**: macOS may ask the first time Jarvis reads your Desktop, Documents or Downloads.
+
+`./run.sh --doctor` shows whether Accessibility is on. In terminal mode Jarvis never types into its own Terminal window; it brings the right app forward first.
 
 ## Keep your API key private
 
@@ -127,8 +142,10 @@ jarvis/
 │   ├── tools/             what Jarvis can do
 │   │   ├── file_tools.py      read, write, edit and list files
 │   │   ├── shell_tools.py     run terminal commands, asking first for risky ones
+│   │   ├── mac_tools.py       open apps and sites, AppleScript, clipboard, typing, notifications
 │   │   └── memory_tools.py    remember facts about you
 │   ├── ui/                how Jarvis shows things (the terminal now; the menu bar later)
+│   ├── mac.py             macOS helpers: AppleScript, clipboard, keystrokes, permissions
 │   ├── config.py          loads settings: defaults, then config.yaml, then config.local.yaml
 │   ├── claude_client.py   Claude API client and plain-English error messages
 │   └── doctor.py          the ./run.sh --doctor health check

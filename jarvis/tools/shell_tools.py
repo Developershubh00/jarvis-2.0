@@ -60,7 +60,7 @@ RISKY_SHELL_PATTERNS = [
 _RISKY_SHELL = [re.compile(p) for p in RISKY_SHELL_PATTERNS]
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07]*\x07")
-BACKGROUND_JOBS: dict[int, tuple[str, Path]] = {}
+BACKGROUND_JOBS: dict[int, tuple[str, Path, subprocess.Popen]] = {}  # pid -> (command, log, process)
 
 
 def is_risky_command(command: str) -> bool:
@@ -173,6 +173,17 @@ class _OutputCollector:
         return clean_output(data.decode("utf-8", errors="replace"))
 
 
+def _close_pipe(proc: subprocess.Popen, collector: "_OutputCollector") -> None:
+    """Close our end of the output pipe, but only once it has been read to the end: closing it while a
+    background child still writes to it could kill that child (a server started with &)."""
+    collector.thread.join(0.5)
+    if not collector.thread.is_alive():
+        try:
+            proc.stdout.close()
+        except (OSError, ValueError):
+            pass
+
+
 def _run_foreground(ctx: ToolContext, argv: list[str], cwd: Path, env: dict, timeout: float) -> ToolResult:
     proc = subprocess.Popen(argv, cwd=str(cwd), env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, start_new_session=True)
@@ -183,6 +194,7 @@ def _run_foreground(ctx: ToolContext, argv: list[str], cwd: Path, env: dict, tim
     while True:
         if ctx.cancel.is_set():
             _kill_tree(proc)
+            _close_pipe(proc, collector)
             raise Cancelled()
         if proc.poll() is not None:
             exited_at = exited_at or time.monotonic()
@@ -200,6 +212,7 @@ def _run_foreground(ctx: ToolContext, argv: list[str], cwd: Path, env: dict, tim
         else:
             time.sleep(0.05)
     output = collector.text().strip()
+    _close_pipe(proc, collector)
     rc = proc.returncode
     if timed_out:
         header = f"Timed out after {timeout:.0f}s and was stopped. For servers or long jobs use background=true."
@@ -227,7 +240,7 @@ def _run_background(ctx: ToolContext, argv: list[str], cwd: Path, env: dict, com
     if rc is not None:
         return ToolResult(f"The command exited right away with code {rc}.\n{output or '(no output)'}",
                           is_error=rc != 0)
-    BACKGROUND_JOBS[proc.pid] = (command, log_path)
+    BACKGROUND_JOBS[proc.pid] = (command, log_path, proc)
     return ToolResult(
         f"Running in the background (pid {proc.pid}).\nOutput so far:\n{output or '(nothing yet)'}\n"
         f"Full log: {log_path}\nTo stop it: kill {proc.pid}"

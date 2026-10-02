@@ -55,11 +55,18 @@ TOOL_NOTES: list[tuple[frozenset, str]] = [
      "preferences) or asks you to remember something. Never store passwords or secrets."),
     (frozenset({"get_selected_text"}),
      "- The context block says which app and window the user was in when they called you; \"this\", "
-     "\"here\" or \"the selected text\" usually refers to it. Use get_selected_text to read the selection."),
+     "\"here\" or \"the selected text\" usually refers to it. Use get_selected_text to read the selection. "
+     "In terminal mode you can't reach other apps' selections: ask the user to copy the text, then read the clipboard."),
     (frozenset({"take_screenshot"}),
      "- Use take_screenshot when you need to see what the user is looking at."),
     (frozenset({"type_text"}),
-     "- To put text where the user is typing (a reply, a form field, their document or editor), use type_text."),
+     "- To put text where the user is typing (a reply, a form field, their document or editor), use type_text. "
+     "It types into the app in front, never into the terminal running you, so bring the right app forward first."),
+    (frozenset({"open"}),
+     "- Open apps, websites, files and folders with the open tool, for example a project folder in "
+     "Visual Studio Code or a page in Safari."),
+    (frozenset({"clipboard"}),
+     "- Use the clipboard tool to hand over text the user will paste elsewhere, or to read what they copied."),
     (frozenset({"run_shell"}),
      "- Shell commands run in zsh with no interactive input, so use non-interactive flags. Never use sudo. "
      "Find files with mdfind (Spotlight) or find. Prefer moving things to the Trash over rm. Risky commands "
