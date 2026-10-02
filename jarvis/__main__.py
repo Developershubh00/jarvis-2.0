@@ -1,4 +1,4 @@
-"""Command-line entry point: ./run.sh [--cli [--voice] | --listen | --say TEXT | --doctor | --version]."""
+"""Command-line entry point: ./run.sh starts the menu-bar app; --cli, --listen, --say, --doctor and --version too."""
 from __future__ import annotations
 
 import argparse
@@ -51,7 +51,14 @@ def main(argv: list[str] | None = None) -> int:
 
         return run_cli(cfg, voice=args.voice)
 
-    print(f"Jarvis {__version__} (phase {PHASE} of 10).")
+    if sys.platform == "darwin":
+        try:
+            from .ui.app import run_app
+        except ImportError as e:
+            print(f"Couldn't load the macOS app ({e}). Run ./setup.sh again, then ./run.sh --doctor.")
+            return 1
+        return run_app(cfg)
+    print(f"Jarvis {__version__} (phase {PHASE} of 10). The menu-bar app needs macOS; on this system use:")
     print("  Chat in the terminal:  ./run.sh --cli")
     print("  Talk to it:            ./run.sh --cli --voice")
     print("  Test the microphone:   ./run.sh --listen")

@@ -146,10 +146,11 @@ def check_mac_permissions(r: Report) -> None:
 
     r.section("Mac permissions")
     if mac.accessibility_trusted(prompt=False):
-        r.add(OK, "Accessibility: allowed (typing into apps, reading selected text)")
+        r.add(OK, "Accessibility: allowed (global hotkeys, typing into apps, reading selected text)")
     else:
         r.add(WARN, "Accessibility: not allowed yet",
-              "Needed to type into other apps and read selected text. Open System Settings, Privacy & Security, "
+              "Needed for the global hotkeys, typing into other apps and reading selected text. Open System "
+              "Settings, Privacy & Security, "
               "Accessibility, turn on your terminal app (Terminal or iTerm), then restart Jarvis.")
     r.add(INFO, "Automation: macOS asks the first time Jarvis controls each app (Music, Notes...). Click OK.")
 
@@ -205,6 +206,26 @@ def check_voice(r: Report, cfg, hardware: bool = True) -> None:
               f"Quiet rooms are usually below {cfg.voice.vad_threshold}; speech is well above it.")
 
 
+def check_hotkeys(r: Report, cfg) -> None:
+    from .ui.hotkeys import PTT_DISPLAY, HotkeyError, parse_hotkey, parse_ptt
+
+    r.section("Hotkeys")
+    for action, label in (("talk", "Talk"), ("type", "Type a request")):
+        spec = getattr(cfg.hotkeys, action, "")
+        if not spec:
+            r.add(INFO, f"{label}: off")
+            continue
+        try:
+            r.add(OK, f"{label}: {parse_hotkey(spec).pretty()}")
+        except HotkeyError as e:
+            r.add(WARN, f"{label}: {e}", "Jarvis uses the default instead. Fix hotkeys in config.local.yaml.")
+    try:
+        ptt = parse_ptt(cfg.hotkeys.push_to_talk)
+        r.add(OK if ptt else INFO, f"Hold to talk: {PTT_DISPLAY[ptt]}" if ptt else "Hold to talk: off")
+    except HotkeyError as e:
+        r.add(WARN, str(e))
+
+
 def check_api(r: Report, cfg, client=None) -> None:
     r.section("Claude API")
     if client is None:
@@ -248,6 +269,7 @@ def run_doctor(cfg, out=None, client=None, hardware: bool = True) -> int:
     check_packages(r)
     check_config(r, cfg)
     check_mac_permissions(r)
+    check_hotkeys(r, cfg)
     check_voice(r, cfg, hardware)
     check_api(r, cfg, client)
     fails, warns = r.count(FAIL), r.count(WARN)

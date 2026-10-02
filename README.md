@@ -4,7 +4,7 @@ A voice-first AI assistant for your Mac. Press a hotkey, say what you need, and 
 
 Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain. GitHub stores the code and runs the automatic tests; Jarvis itself runs on your Mac.
 
-> **Status: phase 6 of 10 (voice).** Jarvis now talks back. In voice mode it speaks its replies, listens again by itself when it asks you a question, and understands quick phrases like "never mind" and "new conversation". Next up: the menu-bar app with global hotkeys.
+> **Status: phase 7 of 10 (menu-bar app).** Jarvis now lives in your menu bar. Press ⌃⌥C in any app (or hold the right Option key), speak, and it answers out loud; ⌃⌥J types a request instead. Next up: a floating glass panel showing what Jarvis hears and says.
 
 ## Roadmap
 
@@ -16,7 +16,7 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **4. Mac control** ✅ | Open apps and websites, AppleScript, clipboard, notifications, typing into apps | "Open GitHub in Safari" |
 | **5. Ears** ✅ | Microphone with voice detection, offline Whisper speech-to-text | `./run.sh --cli --voice` |
 | **6. Voice** ✅ | Spoken replies, the assistant engine, Esc to cancel, follow-up questions | Talk to it in Terminal |
-| 7. Menu-bar app | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
+| **7. Menu-bar app** ✅ | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
 | 8. Floating panel | Glass panel with an animated orb and live text | Watch it listen, think and speak |
 | 9. Tutor mode | ⌃⌥T: Jarvis sees your screen and guides you with an animated pointer | "Explain what's on my screen" |
 | 10. Polish | "Hey Jarvis" wake word, hold-to-talk, launch at login, full permission checks | `./run.sh --doctor` all green |
@@ -43,7 +43,30 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 
 If you see "permission denied", run `chmod +x setup.sh run.sh` once.
 
-## Chat with Jarvis
+## Use Jarvis from any app
+
+```bash
+./run.sh
+```
+
+A Jarvis icon appears in the menu bar. Then, in any app:
+
+| Do this | To |
+|---|---|
+| ⌃⌥C (Control+Option+C) | start talking; press it again to finish early |
+| Hold the right ⌥ Option key | talk while you hold it, release to send |
+| ⌃⌥J | type a request in a small box instead |
+| Esc | stop listening or speaking (press it twice to stop a task that's running) |
+
+The icon shows what Jarvis is doing (waveform: ready, microphone: listening, sparkles: thinking, speaker: speaking), and the top line of its menu shows the latest status. The menu also has Talk, Type a request, Stop, Copy last reply, New conversation, Open workspace folder, Edit settings, Open log and Quit.
+
+The first time, macOS asks for **Accessibility** permission for your terminal app (System Settings, Privacy & Security, Accessibility). Turn it on and the hotkeys start working within a few seconds; no restart needed. Keep the Terminal window open while Jarvis runs, because closing it quits Jarvis (starting at login arrives in phase 10).
+
+Why not just "c"? A single letter would fire every time you type it, so hotkeys need modifiers. You can change them in `config.local.yaml`, for example `talk: "f5"` under `hotkeys:` (on a MacBook, press fn+F5, or turn on "Use F1, F2, etc. keys as standard function keys" in System Settings, Keyboard).
+
+Without an API key you can still try the hotkeys: Jarvis listens, shows what it heard in the menu, and then tells you it needs a key.
+
+## Chat with Jarvis in the terminal
 
 ```bash
 ./run.sh --cli
@@ -168,7 +191,10 @@ jarvis/
 │   │   ├── shell_tools.py     run terminal commands, asking first for risky ones
 │   │   ├── mac_tools.py       open apps and sites, AppleScript, clipboard, typing, notifications
 │   │   └── memory_tools.py    remember facts about you
-│   ├── ui/                how Jarvis shows things (the terminal now; the menu bar later)
+│   ├── ui/                how Jarvis shows things
+│   │   ├── app.py             the menu-bar app (icon, menu, notifications)
+│   │   ├── hotkeys.py         global hotkeys and hold-to-talk
+│   │   └── menu_panel.py      status in the menu bar (the floating panel arrives in phase 8)
 │   ├── mac.py             macOS helpers: AppleScript, clipboard, keystrokes, permissions
 │   ├── assistant.py       the assistant engine: listening, thinking, speaking, quick phrases, cancelling
 │   ├── voice/             the microphone (recorder.py), speech recognition (stt.py) and speech (tts.py)
@@ -196,6 +222,7 @@ GitHub Actions runs the same tests on every push; see the **Actions** tab of you
 - **The doctor says the key was rejected**: re-copy the key into `.env` with no quotes or spaces around it.
 - **"Your API credit balance is too low"**: add credits under Billing in the Claude Console.
 - **The model wasn't found**: check `llm.model` in `config.local.yaml` for typos.
+- **The hotkeys don't do anything**: turn on your terminal app in System Settings, Privacy & Security, Accessibility. Also make sure Terminal's Secure Keyboard Entry (in the Terminal menu) is off, because it hides keystrokes from every other app.
 - **"macOS blocked access" when reading a file**: allow your terminal app under System Settings, Privacy & Security, Files and Folders (or Full Disk Access).
 - **"The microphone is giving pure silence"**: allow Microphone access for your terminal app (see Mac permissions), then quit and reopen the terminal.
 - **The speech model download fails**: it needs internet the first time only; check your connection and run `./run.sh --listen` again.
