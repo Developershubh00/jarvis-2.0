@@ -21,6 +21,19 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **9. Tutor mode** ✅ | ⌃⌥T: Jarvis sees your screen and guides you with an animated pointer | "Explain what's on my screen" |
 | **10. Polish** ✅ | "Hey Jarvis" wake word, hold-to-talk, launch at login, full permission checks | `./run.sh --doctor` all green |
 
+## Documentation
+
+The `docs/` folder has six PDFs:
+
+| Document | Read it when |
+|---|---|
+| [Architecture](docs/Jarvis-1-Architecture.pdf) | you want the big picture: layers, modules, threads and data |
+| [System design](docs/Jarvis-2-System-Design.pdf) | you want to know how each part works inside, with every setting |
+| [Commands and flows](docs/Jarvis-3-Commands-and-Flows.pdf) | you want every command and key, and what happens when you use them |
+| [Development process](docs/Jarvis-4-Development-Process.pdf) | you're changing Jarvis: update kits, tests and recipes |
+| [Debugging guide](docs/Jarvis-5-Debugging-Guide.pdf) | something doesn't work |
+| [First run with your API key](docs/Jarvis-6-First-Run-Checklist.pdf) | you've just added your key |
+
 ## What you need
 
 - A Mac with macOS 12 (Monterey) or newer.
@@ -256,6 +269,7 @@ jarvis/
 │   ├── login.py           start at login (./run.sh --login on)
 │   ├── claude_client.py   Claude API client and plain-English error messages
 │   └── doctor.py          the ./run.sh --doctor health check
+├── docs/                  the six documentation PDFs
 ├── tests/                 unit tests, run by GitHub Actions on every push
 ├── patches/               update kits and their backups (not in git)
 └── data/                  logs, backups, speech models and memory (not in git)
