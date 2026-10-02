@@ -4,7 +4,7 @@ A voice-first AI assistant for your Mac. Press a hotkey, say what you need, and 
 
 Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain. GitHub stores the code and runs the automatic tests; Jarvis itself runs on your Mac.
 
-> **Status: phase 5 of 10 (ears).** Jarvis can now hear you: talk to it in the terminal, with speech recognition running offline on your Mac. Replies are still text; speaking them aloud arrives in phase 6.
+> **Status: phase 6 of 10 (voice).** Jarvis now talks back. In voice mode it speaks its replies, listens again by itself when it asks you a question, and understands quick phrases like "never mind" and "new conversation". Next up: the menu-bar app with global hotkeys.
 
 ## Roadmap
 
@@ -15,7 +15,7 @@ Runs on macOS 12 or newer (Intel or Apple Silicon) and uses Claude as its brain.
 | **3. Files and terminal** ✅ | Read, write and edit files; run commands with safety checks and backups | "Make a Python script that prints the first 20 primes and run it" |
 | **4. Mac control** ✅ | Open apps and websites, AppleScript, clipboard, notifications, typing into apps | "Open GitHub in Safari" |
 | **5. Ears** ✅ | Microphone with voice detection, offline Whisper speech-to-text | `./run.sh --cli --voice` |
-| 6. Voice | Spoken replies, the assistant engine, Esc to cancel, follow-up questions | Talk to it in Terminal |
+| **6. Voice** ✅ | Spoken replies, the assistant engine, Esc to cancel, follow-up questions | Talk to it in Terminal |
 | 7. Menu-bar app | Runs in the background with global hotkeys (⌃⌥C talk, ⌃⌥J type, Esc cancel) | Press ⌃⌥C in any app |
 | 8. Floating panel | Glass panel with an animated orb and live text | Watch it listen, think and speak |
 | 9. Tutor mode | ⌃⌥T: Jarvis sees your screen and guides you with an animated pointer | "Explain what's on my screen" |
@@ -78,7 +78,9 @@ First, test your microphone. This needs no API key, and your voice never leaves 
 
 Press Enter, say something, then pause; your words appear on screen. The first time, Jarvis downloads its speech model (about 480 MB, once), and macOS asks to let your terminal use the microphone: click OK.
 
-Then talk to Jarvis with `./run.sh --cli --voice`. Press Enter on an empty line, speak, and pause when you're done; you can still type messages too. Ctrl+C stops listening.
+Then talk to Jarvis with `./run.sh --cli --voice`. Press Enter on an empty line, speak, and pause when you're done; you can still type messages too. Jarvis speaks its replies, and when it asks you a question it listens for your answer straight away. Ctrl+C stops it while it's listening, thinking or speaking.
+
+Quick phrases work without calling Claude: "never mind" cancels, "new conversation" (or "start over") clears the conversation, "repeat that" says the last answer again, and "thanks" gets a polite reply.
 
 Tips:
 
@@ -86,6 +88,8 @@ Tips:
 - `voice.stt_model: base.en` is faster but less accurate; `medium.en` is more accurate but slower.
 - Add names and jargon it should recognise to `voice.vocabulary`.
 - To use another microphone, set `voice.input_device` to its name (`./run.sh --doctor` shows the current one).
+- Change the speaking voice with `voice.tts_voice` and its speed with `voice.tts_rate`. List your voices with `say -v '?'`; nicer ones can be downloaded in System Settings, Accessibility, Spoken Content, System Voice, Manage Voices. `voice.tts: false` keeps Jarvis quiet.
+- `voice.follow_up_listen: false` turns off listening for answers automatically.
 
 ## Files, commands and safety
 
@@ -166,7 +170,8 @@ jarvis/
 │   │   └── memory_tools.py    remember facts about you
 │   ├── ui/                how Jarvis shows things (the terminal now; the menu bar later)
 │   ├── mac.py             macOS helpers: AppleScript, clipboard, keystrokes, permissions
-│   ├── voice/             the microphone (recorder.py) and offline speech recognition (stt.py)
+│   ├── assistant.py       the assistant engine: listening, thinking, speaking, quick phrases, cancelling
+│   ├── voice/             the microphone (recorder.py), speech recognition (stt.py) and speech (tts.py)
 │   ├── config.py          loads settings: defaults, then config.yaml, then config.local.yaml
 │   ├── claude_client.py   Claude API client and plain-English error messages
 │   └── doctor.py          the ./run.sh --doctor health check

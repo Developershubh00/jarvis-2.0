@@ -65,6 +65,9 @@ TOOL_NOTES: list[tuple[frozenset, str]] = [
     (frozenset({"open"}),
      "- Open apps, websites, files and folders with the open tool, for example a project folder in "
      "Visual Studio Code or a page in Safari."),
+    (frozenset({"speak"}),
+     "- When your reply will be spoken, use speak for a short progress update during a long task. Your final "
+     "reply is spoken automatically, so don't repeat it."),
     (frozenset({"clipboard"}),
      "- Use the clipboard tool to hand over text the user will paste elsewhere, or to read what they copied."),
     (frozenset({"run_shell"}),

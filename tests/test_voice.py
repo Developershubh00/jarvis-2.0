@@ -105,7 +105,8 @@ class FakeRecorder:
     def __init__(self, result):
         self.result = result
 
-    def record(self, stop, abort, on_level=None, **kwargs):
+    def record(self, stop_event=None, abort_event=None, on_level=None, **kwargs):
+        self.kwargs = kwargs
         if isinstance(self.result, BaseException):
             raise self.result
         if on_level:
@@ -269,8 +270,8 @@ class TalkingTests(Base):
         self.assertTrue(sent.endswith("open github"))
 
     def test_problems_while_listening_never_reach_the_api(self):
-        cases = ((None, "didn't hear anything"), (MicrophoneError("pure silence"), "Error: pure silence"),
-                 (KeyboardInterrupt(), "stopped listening"))
+        cases = ((None, "Didn't hear anything. Press Enter and start talking."),
+                 (MicrophoneError("pure silence"), "Error: pure silence"), (KeyboardInterrupt(), "Stopped."))
         for result, expected in cases:
             api, chat, out = self.chat([], FakeRecorder(result), FakeSTT("x"))
             self.assertIsNone(chat.listen())
@@ -278,7 +279,7 @@ class TalkingTests(Base):
             self.assertEqual(api.requests, [])
         api, chat, out = self.chat([], FakeRecorder(np.ones(16_000, np.float32)), FakeSTT(""))
         self.assertIsNone(chat.listen())
-        self.assertIn("couldn't make out any words", out.getvalue())
+        self.assertIn("Didn't catch that", out.getvalue())
 
     def test_microphone_test_needs_no_api_key(self):
         os.environ["ANTHROPIC_API_KEY"] = ""
@@ -328,7 +329,9 @@ class DoctorMicrophoneTests(Base):
         r = Report(io.StringIO(), color=False)
         with mock.patch.dict(sys.modules, {"sounddevice": None}):
             check_voice(r, self.cfg, hardware=False)
-        self.assertEqual([status for status, _, _ in r.items], ["info"])
+        labels = [label for _, label, _ in r.items]
+        self.assertTrue(labels[0].startswith("Speech model"))
+        self.assertFalse(any("Microphone" in label for label in labels))
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from __future__ import annotations
 import importlib
 import importlib.metadata
 import platform
+import shutil
 import sys
 import textwrap
 import time
@@ -164,6 +165,18 @@ def check_voice(r: Report, cfg, hardware: bool = True) -> None:
     else:
         r.add(INFO, f"Speech model {stt.model_name}: not downloaded yet",
               f"It downloads by itself the first time you talk ({stt.download_size}, once). Try ./run.sh --listen.")
+    from .voice.tts import available_voices
+
+    if shutil.which("say"):
+        voices = available_voices()
+        wanted = cfg.voice.tts_voice
+        if wanted and voices and wanted not in voices:
+            r.add(WARN, f"Voice '{wanted}' isn't installed", "Jarvis will use the system voice. See the voices "
+                  "you have with: say -v '?'  (add more in System Settings, Accessibility, Spoken Content).")
+        else:
+            r.add(OK, f"Speaking voice: {wanted or 'system default'}")
+    else:
+        r.add(INFO, "Spoken replies need the macOS 'say' command (not available here)")
     if not hardware:
         return
     try:

@@ -170,6 +170,14 @@ def notify(ctx: ToolContext, a: dict) -> str:
     return "Notification shown."
 
 
+def speak(ctx: ToolContext, a: dict) -> str:
+    text = str(require(a, "text"))
+    if ctx.speak is None:
+        return "Speech is off right now, so the text is only on screen."
+    ctx.speak(text)
+    return "Said it."
+
+
 def register(reg) -> None:
     reg.add(
         "open",
@@ -241,4 +249,12 @@ def register(reg) -> None:
             "title": {"type": "string"},
         },
         required=("message",), func=notify, status="Showing a notification", activity="Notifying…",
+    )
+    reg.add(
+        "speak",
+        """Say something out loud right now, before your final answer: a short progress update during a long
+        task, or one step of a spoken walkthrough. Your final reply is spoken automatically; don't repeat it.""",
+        {"text": {"type": "string", "description": "One or two short sentences."}},
+        required=("text",), func=speak,
+        status=lambda a: "Saying: " + short(a.get("text", ""), 70), activity="Speaking…",
     )

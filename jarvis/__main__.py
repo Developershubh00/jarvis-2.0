@@ -10,7 +10,7 @@ from . import PHASE, __version__
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="jarvis", description="Jarvis: a voice-first AI assistant for your Mac.")
     parser.add_argument("--cli", action="store_true", help="chat with Jarvis in the terminal")
-    parser.add_argument("--voice", action="store_true", help="talk instead of typing: press Enter on an empty line")
+    parser.add_argument("--voice", action="store_true", help="talk instead of typing (press Enter on an empty line); replies are spoken")
     parser.add_argument("--listen", action="store_true", help="test the microphone and speech recognition (no API key needed)")
     parser.add_argument("--say", metavar="TEXT", help="send one message, print the reply and exit")
     parser.add_argument("--doctor", action="store_true", help="check your setup and API key, and explain fixes")
@@ -45,7 +45,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.say:
         from .cli import run_once
 
-        return run_once(cfg, args.say)
+        return run_once(cfg, args.say, voice=args.voice)
     if args.cli or args.voice:
         from .cli import run_cli
 

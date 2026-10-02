@@ -1,18 +1,18 @@
-"""Terminal chat: type to Jarvis and read its replies as they stream in."""
+"""Terminal mode: chat with Jarvis by typing, or talk to it with --voice (replies are then spoken)."""
 from __future__ import annotations
 
 import importlib
 import logging
 import threading
 import time
+from typing import Any, Callable
 
-from . import mac, prompts
-from .brain import SEARCH_ACTIVITY, Brain, BrainError
+from . import mac
+from .assistant import Assistant
 from .claude_client import get_api_key
 from .config import ENV_PATH
-from .memory import Memory
-from .tools import Cancelled, ToolContext, build_registry
 from .ui import ConsoleUI
+from .voice.tts import Speaker
 
 log = logging.getLogger(__name__)
 
@@ -23,8 +23,9 @@ HELP = """Commands:
   /usage           tokens used this session
   /help            show this help
   /quit            leave (Ctrl+D works too)
-Press Ctrl+C while Jarvis is answering to stop it.
-With --voice: press Enter on an empty line, then speak."""
+Ctrl+C stops Jarvis while it's listening, thinking or speaking.
+With --voice: press Enter on an empty line, then speak. Say "never mind" to cancel,
+"new conversation" to start fresh, or "repeat that" to hear the last answer again."""
 
 
 def no_key_help() -> str:
@@ -38,65 +39,43 @@ def no_key_help() -> str:
 
 
 class Chat:
-    """One terminal conversation with the brain (voice arrives in phases 5 and 6)."""
+    """A terminal session: the assistant engine plus the terminal it runs in."""
 
-    def __init__(self, cfg, ui=None, brain: Brain | None = None, memory: Memory | None = None,
-                 recorder=None, stt=None) -> None:
+    def __init__(self, cfg, ui=None, brain=None, memory=None, recorder=None, stt=None,
+                 speaker: Speaker | None = None) -> None:
         self.cfg = cfg
         self.ui = ui or ConsoleUI(name=cfg.assistant_name)
-        self.memory = memory if memory is not None else Memory(cfg.paths.memory_file)
-        self.brain = brain or Brain(cfg, build_registry(cfg), self.memory)
-        self.cancel = threading.Event()
-        self.host_app = mac.frontmost_app()  # the terminal we're running in: never type into it
-        self._recorder = recorder
-        self._stt = stt
+        self.assistant = Assistant(cfg, self.ui, brain=brain, memory=memory,
+                                   speaker=speaker if speaker is not None else Speaker(cfg, enabled=False),
+                                   recorder=recorder, transcriber=stt)
+        self.assistant.host_app = mac.frontmost_app()  # the terminal we're running in: never type into it
 
     @property
-    def recorder(self):
-        if self._recorder is None:
-            from .voice.recorder import Recorder
+    def brain(self):
+        return self.assistant.brain
 
-            self._recorder = Recorder(self.cfg)
-        return self._recorder
+    @property
+    def memory(self):
+        return self.assistant.memory
+
+    @property
+    def host_app(self) -> dict | None:
+        return self.assistant.host_app
 
     @property
     def stt(self):
-        if self._stt is None:
-            from .voice.stt import Transcriber
-
-            self._stt = Transcriber(self.cfg)
-        return self._stt
-
-    def listen(self) -> str | None:
-        """Record one spoken request and return the words (None if nothing usable was heard)."""
-        return hear(self.cfg, self.recorder, self.stt, self.ui)
+        return self.assistant._get_stt()
 
     def ask(self, text: str, source: str = "cli") -> str | None:
-        """Send one message and stream the answer. Returns the reply, or None if stopped or failed."""
-        self.cancel.clear()
-        ctx = ToolContext(cfg=self.cfg, ui=self.ui, memory=self.memory, cancel=self.cancel,
-                          host_app=self.host_app)
-        content = prompts.turn_context(self.cfg, source=source, speak=False) + "\n\n" + text
-        self.ui.begin_turn()
-        try:
-            result = self.brain.run_turn(content, ctx, on_text=self.ui.append_text,
-                                         on_status=self.ui.show_status, on_activity=self._activity)
-        except Cancelled:
-            self.ui.hint("stopped")
-            return None
-        except BrainError as e:
-            self.ui.show_error(str(e))
-            return None
-        self.ui.show_response(result.text)
-        return result.text
+        """Send one typed (or already transcribed) message. Returns the reply, or None if stopped or failed."""
+        return self.assistant.process_text(text, source=source) or None
+
+    def listen(self, follow_up: bool = False) -> str | None:
+        """Listen for one spoken request, then answer it. Returns the reply, or None."""
+        return self.assistant.listen_once(follow_up=follow_up) or None
 
     def stop(self) -> None:
-        self.cancel.set()
-        self.brain.abort()
-
-    def _activity(self, text: str) -> None:
-        if text == SEARCH_ACTIVITY:  # tool calls get their own status line when they run
-            self.ui.show_status(text)
+        self.assistant.stop_now()
 
 
 def hear(cfg, recorder, stt, ui) -> str | None:
@@ -161,17 +140,25 @@ def load_speech(stt) -> bool:
     return True
 
 
-def ask_interruptibly(chat: Chat, text: str, source: str = "cli") -> str | None:
-    """Run one request in a worker thread so Ctrl+C can stop it cleanly."""
+def run_interruptibly(chat: Chat, fn: Callable[..., Any], *args: Any) -> Any:
+    """Run fn(*args) in a worker thread so Ctrl+C stops it cleanly (listening, thinking or speaking)."""
     box: dict = {}
-    worker = threading.Thread(target=lambda: box.setdefault("reply", chat.ask(text, source)), daemon=True)
+    worker = threading.Thread(target=lambda: box.setdefault("result", fn(*args)), daemon=True)
     worker.start()
     while worker.is_alive():
         try:
             worker.join(0.1)
         except KeyboardInterrupt:
             chat.stop()
-    return box.get("reply")
+    return box.get("result")
+
+
+def ask_interruptibly(chat: Chat, text: str, source: str = "cli") -> str | None:
+    return run_interruptibly(chat, chat.ask, text, source)
+
+
+def make_chat(cfg, voice: bool) -> Chat:
+    return Chat(cfg, speaker=Speaker(cfg, enabled=voice and bool(cfg.voice.tts)))
 
 
 def handle_command(chat: Chat, line: str) -> str | None:
@@ -209,12 +196,13 @@ def run_cli(cfg, chat: Chat | None = None, voice: bool = False) -> int:
         importlib.import_module("readline")  # arrow keys and history while typing
     except ImportError:
         pass
-    chat = chat or Chat(cfg)
+    chat = chat or make_chat(cfg, voice)
     if voice and not load_speech(chat.stt):
         return 1
     print(f"{cfg.assistant_name} is ready (model {cfg.llm.model}). Type a message, or /help for commands.")
     if voice:
-        print("Voice is on: press Enter on an empty line, then speak. Replies are text until phase 6.")
+        replies = "spoken aloud" if chat.assistant.speaker.enabled else "shown as text (speech is off)"
+        print(f"Voice is on: press Enter on an empty line, then speak. Replies are {replies}; Ctrl+C stops them.")
     for warning in getattr(cfg, "warnings", []):
         print(f"Warning: {warning}")
     prompt = "\nyou (Enter to talk) › " if voice else "\nyou › "
@@ -226,9 +214,9 @@ def run_cli(cfg, chat: Chat | None = None, voice: bool = False) -> int:
             return 0
         if not line:
             if voice:
-                heard = chat.listen()
-                if heard:
-                    ask_interruptibly(chat, heard, source="voice")
+                run_interruptibly(chat, chat.listen)
+                while chat.assistant.follow_up_pending:  # Jarvis asked a question: listen for the answer
+                    run_interruptibly(chat, chat.listen, True)
             continue
         if line.startswith("/"):
             if handle_command(chat, line) == "quit":
@@ -237,11 +225,11 @@ def run_cli(cfg, chat: Chat | None = None, voice: bool = False) -> int:
         ask_interruptibly(chat, line)
 
 
-def run_once(cfg, text: str, chat: Chat | None = None) -> int:
+def run_once(cfg, text: str, chat: Chat | None = None, voice: bool = False) -> int:
     if chat is None and not get_api_key():
         print(no_key_help())
         return 1
-    chat = chat or Chat(cfg)
+    chat = chat or make_chat(cfg, voice)
     return 0 if ask_interruptibly(chat, text) is not None else 1
 
 

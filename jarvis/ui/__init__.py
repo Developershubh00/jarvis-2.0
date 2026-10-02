@@ -91,14 +91,16 @@ class ConsoleUI(UIBridge):
 
     def set_state(self, state: str, title: str | None = None, subtitle: str | None = None) -> None:
         if state == "listening":
-            self._line(self._paint("1;35", "● Listening.") +
-                       self._paint("2", " Speak now; it stops when you pause. Ctrl+C cancels."))
+            hint = subtitle or "Speak now; it stops when you pause."
+            self._line(self._paint("1;35", "● Listening.") + self._paint("2", f" {hint} Ctrl+C cancels."))
         elif state == "transcribing":
             self._line(self._paint("2", "  · transcribing…"))
-        elif state == "error" and subtitle:
-            self.show_error(subtitle)
-        elif title and state == "idle" and subtitle:
-            self._line(f"[{title}] {subtitle}")
+        elif state == "idle" and title and subtitle:  # errors are printed by show_error
+            self.hint(f"{title}. {subtitle}")
+
+    def set_activity(self, text: str) -> None:
+        if text.startswith("Searching the web"):  # tool calls get their own status line when they run
+            self.show_status(text)
 
     def begin_turn(self) -> None:
         self._streamed = False
